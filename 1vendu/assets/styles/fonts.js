@@ -37,7 +37,7 @@ export default {
     },
     L_Light: {
         fontSize: 16,
-        fontWeight: '300', // Pour indiquer "light"
+        fontWeight: '300',
         lineHeight: 24,
     },
     L_Regular: {
