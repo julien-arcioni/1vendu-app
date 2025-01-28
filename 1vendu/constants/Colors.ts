@@ -22,8 +22,8 @@ export default {
   middle_grey: '#D9D9D9',
   light_grey: '#F5F5F5',
   green: '#00970F',
-  neutral_green: 'rgba(35, 193, 10, 0.15)',
+  neutral_green: '#23C10A',
   red: '#C71026',
-  neutral_red: 'rgba(193,10,10,0.15)',
+  neutral_red: '#C10A0A',
   blanc: '#ffffff',
 };
