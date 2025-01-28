@@ -2,6 +2,8 @@ import { StyleSheet } from 'react-native';
 
 import EditScreenInfo from '@/components/EditScreenInfo';
 import { Text, View } from '@/components/Themed';
+import CustomButton from "@/components/button/CustomButton";
+import Colors from "@/constants/Colors";
 
 export default function TabOneScreen() {
   return (
@@ -9,6 +11,7 @@ export default function TabOneScreen() {
       <Text style={styles.title}>Login</Text>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       <EditScreenInfo path="app/(tabs)/index.tsx" />
+      <CustomButton title={"Test"} type={"primary"} backgroundColor={Colors.secondary} onPress={() => console.log("Test")} />
     </View>
   );
 }
