@@ -35,20 +35,12 @@ export default function TabLayout() {
           // tabBarStyle: { display: 'none' },
         }}
       />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'A préparer',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-        }}
-      />
-
         <Tabs.Screen
-            name="three"
-            options={{
-                title: 'Favoris',
-                tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-            }}
+        name="home"
+        options={{
+          title: 'Accueil',
+          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+        }}
         />
     </Tabs>
   );
