@@ -32,7 +32,7 @@ export default function TabLayout() {
           title: 'Explorer',
           headerShown: false,
           href: null,
-          // tabBarStyle: { display: 'none' },
+          tabBarStyle: { display: 'none' },
         }}
       />
         <Tabs.Screen
@@ -42,6 +42,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
         }}
         />
-    </Tabs>
-  );
+        <Tabs.Screen
+        name="auth"
+        options={{
+          title: "Authentification",
+          headerShown: false,
+          tabBarStyle: { display: "none"},
+        }}
+        />
+      </Tabs>
+      );
 }

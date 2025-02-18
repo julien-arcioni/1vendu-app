@@ -1,34 +1,76 @@
-import { StyleSheet } from 'react-native';
+import React from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  ImageBackground, 
+  Image 
+} from 'react-native';
+import { router } from 'expo-router';
+import CustomButton from '@/components/button/CustomButton';
+import Colors from '@/constants/Colors';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
-import CustomButton from "@/components/button/CustomButton";
-import Colors from "@/constants/Colors";
-
-export default function TabOneScreen() {
+export default function WelcomeScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
-      <CustomButton title={"Test"} type={"primary"} backgroundColor={Colors.secondary} onPress={() => console.log("Test")} />
-    </View>
+    <ImageBackground
+      source={require('@/assets/images/welcome/background.jpg')}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
+        {/* Logo */}
+        <Image 
+          source={require('@/assets/images/brand/logo.png')} 
+          style={styles.logo} 
+        />
+
+        {/* Conteneur des boutons */}
+        <View style={styles.buttonContainer}>
+          <CustomButton 
+            title="Se connecter" 
+            type="secondary" 
+            onPress={() => router.push('/auth/login')}
+            style={styles.button}
+          />
+          <CustomButton 
+            title="S'inscrire" 
+            type="outline"
+            borderColor={Colors.secondary}
+            textColor={Colors.secondary}
+            onPress={() => router.push('/auth/register')}
+            style={styles.button}
+          />
+        </View>
+      </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)', 
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    padding: 20,
+    paddingBottom: "25%",
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  logo: {
+    width: 180,
+    height: 80,
+    marginBottom: 50,
+    resizeMode: 'contain', 
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  buttonContainer: {
+    width: '100%',
+    gap: 15, 
+  },
+  button: {
+    width: '100%',
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    borderWidth: 3
   },
 });
