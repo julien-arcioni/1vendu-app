@@ -48,6 +48,8 @@ export default function TabLayout() {
           title: "Authentification",
           headerShown: false,
           tabBarStyle: { display: "none"},
+          tabBarIcon: undefined,
+          href: null
         }}
         />
       </Tabs>

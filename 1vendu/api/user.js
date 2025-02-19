@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -14,6 +15,7 @@ export const loginUser = async (identifier, password) => {
       identifier,
       password,
     });
+    await saveUserData(response.data);
     return response.data;
   } catch (error) {
     throw error;
@@ -196,6 +198,42 @@ export const getSeller = async (token, sellerId) => {
     });
     return response.data;
   } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Sauvegarde les informations de l'utilisateur dans le Secure Store
+ * @param {Object} userData - Données de l'utilisateur et JWT
+ * @returns {Promise<void>}
+ */
+export const saveUserData = async (userData) => {
+  try {
+    const userDataToStore = {
+      id: userData.user.id,
+      firstname: userData.user.firstname,
+      lastname: userData.user.lastname,
+      email: userData.user.email,
+      jwt: userData.jwt
+    };
+
+    await SecureStore.setItemAsync('userData', JSON.stringify(userDataToStore));
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde des données utilisateur:', error);
+    throw error;
+  }
+};
+
+/**
+ * Récupère les informations de l'utilisateur depuis le Secure Store
+ * @returns {Promise<Object|null>}
+ */
+export const getStoredUserData = async () => {
+  try {
+    const userData = await SecureStore.getItemAsync('userData');
+    return userData ? JSON.parse(userData) : null;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des données utilisateur:', error);
     throw error;
   }
 };
