@@ -1,7 +1,24 @@
-import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import axiosInstance from './axiosConfig';
+import axios from 'axios';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+interface UserData {
+  id: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  jwt: string;
+  user?: {
+    id: string;
+    firstname: string;
+    lastname: string;
+    email: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
 
 /**
  * Authentifie un utilisateur avec son identifiant et mot de passe
@@ -9,8 +26,9 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
  * @param {string} password - Mot de passe
  * @returns {Promise<Object>} Données de l'utilisateur authentifié
  */
-export const loginUser = async (identifier, password) => {
+export const loginUser = async (identifier: string, password: string) => {
   try {
+    // On utilise axios directement pour l'authentification
     const response = await axios.post(`${API_URL}/api/auth/local`, {
       identifier,
       password,
@@ -32,8 +50,16 @@ export const loginUser = async (identifier, password) => {
  * @param {boolean} isSeller - Indique si l'utilisateur est un vendeur
  * @returns {Promise<Object>} Données de l'utilisateur créé
  */
-export const registerUser = async (username, email, password, firstname, lastname, isSeller) => {
+export const registerUser = async (
+  username: string, 
+  email: string, 
+  password: string, 
+  firstname: string, 
+  lastname: string, 
+  isSeller: boolean
+) => {
   try {
+    // On utilise axios directement pour l'inscription
     const response = await axios.post(`${API_URL}/api/auth/local/register`, {
       username,
       email,
@@ -51,17 +77,13 @@ export const registerUser = async (username, email, password, firstname, lastnam
 /**
  * Met à jour les informations d'un utilisateur
  * @param {string} userId - ID de l'utilisateur
- * @param {string} token - Token d'authentification
  * @param {Object} updateData - Données à mettre à jour
  * @returns {Promise<Object>} Données de l'utilisateur mises à jour
  */
-export const updateUser = async (userId, token, updateData) => {
+export const updateUser = async (userId: string, updateData: Record<string, any>) => {
   try {
-    const response = await axios.put(`${API_URL}/api/users/${userId}`, updateData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Utilise l'instance axiosInstance qui ajoute automatiquement le token
+    const response = await axiosInstance.put(`/api/users/${userId}`, updateData);
     return response.data;
   } catch (error) {
     throw error;
@@ -70,17 +92,23 @@ export const updateUser = async (userId, token, updateData) => {
 
 /**
  * Récupère les informations de l'utilisateur courant
- * @param {string} token - Token d'authentification
  * @returns {Promise<Object>} Données de l'utilisateur
  */
-export const getCurrentUser = async (token) => {
+export const getCurrentUser = async (token?: string) => {
   try {
-    const response = await axios.get(`${API_URL}/api/users/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
+    if (token) {
+      // Si un token est fourni explicitement
+      const response = await axios.get(`${API_URL}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } else {
+      // Utiliser l'instance configurée qui ajoute automatiquement le token
+      const response = await axiosInstance.get('/api/users/me');
+      return response.data;
+    }
   } catch (error) {
     throw error;
   }
@@ -88,17 +116,12 @@ export const getCurrentUser = async (token) => {
 
 /**
  * Récupère une adresse spécifique
- * @param {string} token - Token d'authentification
  * @param {string} addressId - ID de l'adresse
  * @returns {Promise<Object>} Données de l'adresse
  */
-export const getAddress = async (token, addressId) => {
+export const getAddress = async (addressId: string) => {
   try {
-    const response = await axios.get(`${API_URL}/api/addresses/${addressId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axiosInstance.get(`/api/addresses/${addressId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -107,17 +130,12 @@ export const getAddress = async (token, addressId) => {
 
 /**
  * Crée une nouvelle adresse
- * @param {string} token - Token d'authentification
  * @param {Object} addressData - Données de l'adresse
  * @returns {Promise<Object>} Données de l'adresse créée
  */
-export const createAddress = async (token, addressData) => {
+export const createAddress = async (addressData: Record<string, any>) => {
   try {
-    const response = await axios.post(`${API_URL}/api/addresses`, addressData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axiosInstance.post('/api/addresses', addressData);
     return response.data;
   } catch (error) {
     throw error;
@@ -126,18 +144,13 @@ export const createAddress = async (token, addressData) => {
 
 /**
  * Met à jour une adresse existante
- * @param {string} token - Token d'authentification
  * @param {string} addressId - ID de l'adresse
  * @param {Object} updateData - Données à mettre à jour
  * @returns {Promise<Object>} Données de l'adresse mises à jour
  */
-export const updateAddress = async (token, addressId, updateData) => {
+export const updateAddress = async (addressId: string, updateData: Record<string, any>) => {
   try {
-    const response = await axios.put(`${API_URL}/api/addresses/${addressId}`, updateData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axiosInstance.put(`/api/addresses/${addressId}`, updateData);
     return response.data;
   } catch (error) {
     throw error;
@@ -146,17 +159,12 @@ export const updateAddress = async (token, addressId, updateData) => {
 
 /**
  * Crée un nouveau profil vendeur
- * @param {string} token - Token d'authentification
  * @param {Object} sellerData - Données du vendeur
  * @returns {Promise<Object>} Données du vendeur créé
  */
-export const createSeller = async (token, sellerData) => {
+export const createSeller = async (sellerData: Record<string, any>) => {
   try {
-    const response = await axios.post(`${API_URL}/api/sellers`, sellerData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axiosInstance.post('/api/sellers', sellerData);
     return response.data;
   } catch (error) {
     throw error;
@@ -165,18 +173,13 @@ export const createSeller = async (token, sellerData) => {
 
 /**
  * Met à jour un profil vendeur
- * @param {string} token - Token d'authentification
  * @param {string} sellerId - ID du vendeur
  * @param {Object} updateData - Données à mettre à jour
  * @returns {Promise<Object>} Données du vendeur mises à jour
  */
-export const updateSeller = async (token, sellerId, updateData) => {
+export const updateSeller = async (sellerId: string, updateData: Record<string, any>) => {
   try {
-    const response = await axios.put(`${API_URL}/api/sellers/${sellerId}`, updateData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axiosInstance.put(`/api/sellers/${sellerId}`, updateData);
     return response.data;
   } catch (error) {
     throw error;
@@ -185,19 +188,51 @@ export const updateSeller = async (token, sellerId, updateData) => {
 
 /**
  * Récupère les informations d'un vendeur
- * @param {string} token - Token d'authentification
  * @param {string} sellerId - ID du vendeur
  * @returns {Promise<Object>} Données du vendeur
  */
-export const getSeller = async (token, sellerId) => {
+export const getSeller = async (sellerId: string) => {
   try {
-    const response = await axios.get(`${API_URL}/api/sellers/${sellerId}`, {
+    const response = await axiosInstance.get(`/api/sellers/${sellerId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Vérifie si le token JWT est valide en faisant une requête à l'API Strapi
+ * @param {string} token - Token JWT à vérifier
+ * @returns {Promise<boolean>} Vrai si le token est valide, faux sinon
+ */
+export const verifyToken = async (token: string) => {
+  if (!token) return false;
+  
+  try {
+    // Essaie de récupérer l'utilisateur courant avec le token
+    const response = await axios.get(`${API_URL}/api/users/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
+    
+    // Si la requête réussit, le token est valide
+    return !!response.data;
   } catch (error) {
+    console.error('Erreur lors de la vérification du token:', error);
+    return false;
+  }
+};
+
+/**
+ * Supprime les données utilisateur du Secure Store
+ * @returns {Promise<void>}
+ */
+export const clearUserData = async () => {
+  try {
+    await SecureStore.deleteItemAsync('userData');
+  } catch (error) {
+    console.error('Erreur lors de la suppression des données utilisateur:', error);
     throw error;
   }
 };
@@ -207,13 +242,13 @@ export const getSeller = async (token, sellerId) => {
  * @param {Object} userData - Données de l'utilisateur et JWT
  * @returns {Promise<void>}
  */
-export const saveUserData = async (userData) => {
+export const saveUserData = async (userData: UserData) => {
   try {
     const userDataToStore = {
-      id: userData.user.id,
-      firstname: userData.user.firstname,
-      lastname: userData.user.lastname,
-      email: userData.user.email,
+      id: userData.user?.id || userData.id,
+      firstname: userData.user?.firstname || userData.firstname,
+      lastname: userData.user?.lastname || userData.lastname,
+      email: userData.user?.email || userData.email,
       jwt: userData.jwt
     };
 
@@ -228,7 +263,7 @@ export const saveUserData = async (userData) => {
  * Récupère les informations de l'utilisateur depuis le Secure Store
  * @returns {Promise<Object|null>}
  */
-export const getStoredUserData = async () => {
+export const getStoredUserData = async (): Promise<UserData | null> => {
   try {
     const userData = await SecureStore.getItemAsync('userData');
     return userData ? JSON.parse(userData) : null;
@@ -236,40 +271,4 @@ export const getStoredUserData = async () => {
     console.error('Erreur lors de la récupération des données utilisateur:', error);
     throw error;
   }
-};
-
-/**
- * Demande une réinitialisation de mot de passe
- * @param {string} email - Email de l'utilisateur
- * @returns {Promise<Object>} Réponse de l'API
- */
-export const forgotPassword = async (email) => {
-  try {
-    const response = await axios.post(`${API_URL}/api/auth/forgot-password`, {
-      email,
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-/**
- * Réinitialise le mot de passe avec le code reçu par email
- * @param {string} code - Code de réinitialisation reçu par email
- * @param {string} password - Nouveau mot de passe
- * @param {string} passwordConfirmation - Confirmation du nouveau mot de passe
- * @returns {Promise<Object>} Réponse de l'API
- */
-export const resetPassword = async (code, password, passwordConfirmation) => {
-  try {
-    const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
-      code,
-      password,
-      passwordConfirmation,
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
+}; 

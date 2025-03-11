@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { loginUser } from '@/api/user';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Votre composant CustomInput
 import CustomInput from '@/components/input/CustomInput';
@@ -21,6 +22,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { isAuthenticated, loadUser } = useAuth();
+
+  // Rediriger si déjà authentifié
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/(tabs)/home');
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = async () => {
     try {
@@ -32,10 +41,9 @@ export default function LoginScreen() {
         return;
       }
 
-      const response = await loginUser(email, password);
-      
-      // Stockage du token à implémenter ici
-      // await AsyncStorage.setItem('userToken', response.jwt);
+      await loginUser(email, password);
+      // Recharger l'utilisateur depuis le contexte après la connexion
+      await loadUser();
       
       router.replace('/(tabs)/home');
     } catch (err: any) {
