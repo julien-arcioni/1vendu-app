@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, TextStyle, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
 
@@ -22,8 +22,17 @@ const SIZE_STYLES = {
   },
 };
 
+// Type pour les styles de bouton
+interface ButtonStyle {
+  backgroundColor: string;
+  textColor: string;
+  borderWidth?: number;
+  borderColor?: string;
+  borderRadius?: number;
+}
+
 // Thèmes de couleur
-const BUTTON_STYLES = {
+const BUTTON_STYLES: Record<string, ButtonStyle> = {
   primary:   { backgroundColor: Colors.primary,   textColor: Colors.blanc },
   secondary: { backgroundColor: Colors.secondary, textColor: Colors.blanc },
   success:   { backgroundColor: Colors.green,     textColor: Colors.blanc },
@@ -37,7 +46,25 @@ const BUTTON_STYLES = {
   link:      { backgroundColor: 'transparent', textColor: Colors.secondary },
 };
 
-const CustomButton = ({
+// Définir l'interface des props du composant
+interface CustomButtonProps {
+  title: string;
+  type?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  size?: 'small' | 'medium' | 'large';
+  paddingVertical?: number;
+  paddingHorizontal?: number;
+  fontSize?: number;
+  borderRadius?: number;
+  borderColor?: string;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+  style?: ViewStyle;
+  disabled?: boolean;
+}
+
+const CustomButton: React.FC<CustomButtonProps> = ({
   title,
   type = 'primary',
   backgroundColor,
@@ -46,14 +73,14 @@ const CustomButton = ({
   paddingVertical,
   paddingHorizontal,
   fontSize,
-  //
   borderRadius = 5,
   borderColor,
   icon,
   onPress,
   style: userStyle,
+  disabled = false,
 }) => {
-  const themeStyle = BUTTON_STYLES[type] || {};
+  const themeStyle = BUTTON_STYLES[type] || BUTTON_STYLES.primary;
   
   const sizeStyle = SIZE_STYLES[size] || SIZE_STYLES.medium;
 
@@ -75,10 +102,13 @@ const CustomButton = ({
           // Paddings dynamiques
           paddingVertical:   finalPaddingVertical,
           paddingHorizontal: finalPaddingHorizontal,
+          // Style pour le bouton désactivé
+          opacity: disabled ? 0.6 : 1,
         },
         userStyle 
       ]}
       onPress={onPress}
+      disabled={disabled}
     >
       <View style={styles.content}>
         {icon && (

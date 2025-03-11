@@ -94,7 +94,7 @@ export default function LoginScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         {/* Lien Mot de passe oublié */}
-        <TouchableOpacity onPress={() => console.log('Mot de passe oublié')}>
+        <TouchableOpacity onPress={() => router.push('/auth/forgot-password')}>
           <Text style={styles.forgotPassword}>Mot de passe oublié</Text>
         </TouchableOpacity>
 
@@ -112,6 +112,7 @@ export default function LoginScreen() {
           fontSize={16}
           borderRadius={8}
           borderColor={Colors.secondary}
+          icon="log-in-outline"
         />
 
         {/* Lien d'inscription */}

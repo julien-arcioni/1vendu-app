@@ -17,6 +17,20 @@ export default function AuthLayout() {
           headerShown: false 
         }} 
       />
+      <Stack.Screen 
+        name="forgot-password" 
+        options={{ 
+          title: 'Mot de passe oublié',
+          headerShown: false 
+        }} 
+      />
+      <Stack.Screen 
+        name="reset-password" 
+        options={{ 
+          title: 'Réinitialiser le mot de passe',
+          headerShown: false 
+        }} 
+      />
     </Stack>
   );
 } 

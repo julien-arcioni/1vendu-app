@@ -237,3 +237,39 @@ export const getStoredUserData = async () => {
     throw error;
   }
 };
+
+/**
+ * Demande une réinitialisation de mot de passe
+ * @param {string} email - Email de l'utilisateur
+ * @returns {Promise<Object>} Réponse de l'API
+ */
+export const forgotPassword = async (email) => {
+  try {
+    const response = await axios.post(`${API_URL}/api/auth/forgot-password`, {
+      email,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Réinitialise le mot de passe avec le code reçu par email
+ * @param {string} code - Code de réinitialisation reçu par email
+ * @param {string} password - Nouveau mot de passe
+ * @param {string} passwordConfirmation - Confirmation du nouveau mot de passe
+ * @returns {Promise<Object>} Réponse de l'API
+ */
+export const resetPassword = async (code, password, passwordConfirmation) => {
+  try {
+    const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
+      code,
+      password,
+      passwordConfirmation,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
