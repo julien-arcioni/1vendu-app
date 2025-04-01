@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#eee',
     marginRight: 15,
+    resizeMode: 'contain',
   },
   itemDetails: {
     flex: 1,
