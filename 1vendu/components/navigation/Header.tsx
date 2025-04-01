@@ -23,7 +23,7 @@ const Header = ({
           style={styles.notificationButton}
           onPress={onNotificationPress}
         >
-          <FontAwesome name="bell" size={24} color="black" />
+          <Image source={require('@/assets/icon/icon-bell.png')} style={{ width: 24, height: 24 }} />
         </TouchableOpacity>
       )}
     </View>
@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   logo: {
-    width: 120,
-    height: 40,
+    width: 70,
+    height: 28,
   },
   notificationButton: {
     padding: 5,
