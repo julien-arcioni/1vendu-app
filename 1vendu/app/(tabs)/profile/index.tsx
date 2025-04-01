@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView } from 'react-native';
 import Header from '@/components/navigation/Header';
-import BottomTabBar from '@/components/navigation/BottomTabBar';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
 
@@ -105,7 +104,6 @@ const ProfileScreen = () => {
         </TouchableOpacity>
       </ScrollView>
       
-      <BottomTabBar activeTab="profile" />
     </SafeAreaView>
   );
 };

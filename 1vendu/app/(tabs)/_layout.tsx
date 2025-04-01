@@ -7,6 +7,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useAuthentication } from '@/hooks/useAuthentication';
+import { Image } from 'react-native';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -36,7 +37,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Explorer',
+          title: 'FirstScreen',
           headerShown: false,
           href: null,
           tabBarStyle: { display: 'none' },
@@ -44,10 +45,43 @@ export default function TabLayout() {
       />
         <Tabs.Screen
         name="home"
-        options={{
-          title: 'Accueil',
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-        }}
+        options={({ navigation }) => ({
+          title: 'Explorer',
+          tabBarIcon: () => <Image source={require('@/assets/icon/icon-logo.png')} style={{ width: 28, height: 28}} />,
+          headerShown: false,
+          tabBarActiveTintColor: Colors.secondary,
+          tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+        })}
+        />
+        <Tabs.Screen
+        name="favorites" 
+        options={({ navigation }) => ({
+          title: 'Favoris',
+          tabBarIcon: ({ color }) => <Image source={require('@/assets/icon/icon-favoris.png')} style={{ width: 28, height: 28}} />,
+          headerShown: false,
+          tabBarActiveTintColor: Colors.secondary,
+          tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+        })}
+        />
+        <Tabs.Screen
+        name="cart"
+        options={({ navigation }) => ({
+          title: 'Panier',
+          tabBarIcon: ({ color }) => <Image source={require('@/assets/icon/icon-panier.png')} style={{ width: 28, height: 28}} />,
+          headerShown: false,
+          tabBarActiveTintColor: Colors.secondary,
+          tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+        })}
+        />
+        <Tabs.Screen
+        name="profile"
+        options={({ navigation }) => ({
+          title: 'Profil',
+          tabBarIcon: ({ color }) => <Image source={require('@/assets/icon/icon-stats.png')} style={{ width: 28, height: 28}} />,
+          headerShown: false,
+          tabBarActiveTintColor: Colors.secondary,
+          tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+        })}
         />
         <Tabs.Screen
         name="auth"
