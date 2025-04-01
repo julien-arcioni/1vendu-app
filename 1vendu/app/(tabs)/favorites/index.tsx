@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, FlatList, SafeAreaView, Image, TouchableOpacity } from 'react-native';
 import Header from '@/components/navigation/Header';
-import BottomTabBar from '@/components/navigation/BottomTabBar';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
 
@@ -94,7 +93,6 @@ const FavoritesScreen = () => {
         </View>
       )}
       
-      <BottomTabBar activeTab="favorites" />
     </SafeAreaView>
   );
 };

@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView } fro
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
 import Header from '@/components/navigation/Header';
-import BottomTabBar from '@/components/navigation/BottomTabBar';
 
 // Points de vente fictifs pour la démonstration
 const salesPoints = [
@@ -96,8 +95,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Barre de navigation */}
-      <BottomTabBar activeTab="home" />
     </SafeAreaView>
   );
 }
