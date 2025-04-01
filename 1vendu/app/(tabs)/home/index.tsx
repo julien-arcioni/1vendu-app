@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, Moda
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
 import Header from '@/components/navigation/Header';
+import { router } from 'expo-router';
 
 // Importer MapView et Marker spécifiquement pour iOS si la plateforme est iOS
 import MapView, { Marker } from 'react-native-maps';
@@ -136,7 +137,7 @@ export default function HomeScreen() {
                 }}
                 onPress={() => handleMarkerPress(producer)}
                 title={producer.name}
-                // TODO: Personnaliser davantage les marqueurs (couleur selon catégorie, etc.)
+                pinColor="#e67e22" // Couleur orange pour les marqueurs de producteurs
               />
             ))}
           </MapView>
@@ -158,7 +159,6 @@ export default function HomeScreen() {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        {/* TODO: Améliorer le design de la modal pour ressembler exactement à la maquette */}
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
@@ -170,7 +170,7 @@ export default function HomeScreen() {
                 <Image 
                   source={selectedProducer.image} 
                   style={styles.producerImage}
-                  // TODO: Ajouter un indicateur de chargement pour les images
+                  resizeMode="cover"
                 />
                 
                 <View style={styles.categoriesContainer}>
@@ -284,24 +284,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '60%',
+    paddingBottom: 20,
+    paddingTop: 0,
+    maxHeight: '65%',
   },
   closeButton: {
     position: 'absolute',
     top: 15,
     right: 15,
     zIndex: 10,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 5,
   },
   producerImage: {
     width: '100%',
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 15,
+    height: 180,
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20,
   },
   categoriesContainer: {
     flexDirection: 'row',
+    marginTop: 10,
     marginBottom: 10,
+    paddingHorizontal: 10,
   },
   categoryTag: {
     backgroundColor: '#f5f5f5',
@@ -316,12 +322,14 @@ const styles = StyleSheet.create({
   },
   producerInfo: {
     flex: 1,
+    paddingHorizontal: 10,
   },
   producerNameContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+    marginTop: 15,
   },
   producerName: {
     fontSize: 22,
@@ -340,6 +348,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginBottom: 15,
+    paddingRight: 30,
   },
   viewMoreButton: {
     position: 'absolute',

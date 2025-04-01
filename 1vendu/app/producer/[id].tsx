@@ -251,6 +251,7 @@ export default function ProducerDetailScreen() {
                     longitude: producer.longitude
                   }}
                   title={producer.name}
+                  pinColor="#e67e22"
                 />
               </RNMapView>
               {/* TODO: Ajouter un bouton pour obtenir l'itinéraire */}
@@ -270,6 +271,14 @@ export default function ProducerDetailScreen() {
           </View>
         )}
       </View>
+
+      {/* Bouton flottant "Ajouter au panier" */}
+      {activeTab === 'products' && (
+        <TouchableOpacity style={styles.floatingCartButton}>
+          <FontAwesome name="shopping-cart" size={20} color="#fff" />
+          <Text style={styles.floatingCartButtonText}>Ajouter au panier</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -291,10 +300,11 @@ const styles = StyleSheet.create({
   headerImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   backButton: {
     position: 'absolute',
-    top: 40,
+    top: 50,
     left: 20,
     backgroundColor: 'white',
     borderRadius: 25,
@@ -307,7 +317,7 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 40,
+    top: 50,
     right: 70,
     backgroundColor: 'white',
     borderRadius: 25,
@@ -368,10 +378,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     paddingHorizontal: 20,
+    marginTop: 5,
   },
   tab: {
     paddingVertical: 15,
     marginRight: 30,
+    position: 'relative',
   },
   activeTab: {
     borderBottomWidth: 2,
@@ -380,6 +392,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     color: '#999',
+    fontWeight: '500',
   },
   activeTabText: {
     color: '#e67e22',
@@ -403,12 +416,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   productImage: {
     width: 70,
     height: 70,
     borderRadius: 10,
     marginRight: 15,
+    backgroundColor: '#f9f9f9',
   },
   productInfo: {
     flex: 1,
@@ -496,5 +512,26 @@ const styles = StyleSheet.create({
   },
   directionsIcon: {
     marginLeft: 5,
+  },
+  floatingCartButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#e67e22',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  floatingCartButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
 }); 
