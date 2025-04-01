@@ -3,11 +3,6 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, Moda
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
 import Header from '@/components/navigation/Header';
-<<<<<<< HEAD
-=======
-import BottomTabBar from '@/components/navigation/BottomTabBar';
-import { router } from 'expo-router';
->>>>>>> b2ad67c (Ajout de la carte interactive des producteurs avec intégration de Leaflet pour Android et React Native Maps pour iOS. Mise à jour des dépendances et ajout d'un écran de détails pour chaque producteur. Documentation mise à jour dans le README.)
 
 // Importer MapView et Marker spécifiquement pour iOS si la plateforme est iOS
 import MapView, { Marker } from 'react-native-maps';
