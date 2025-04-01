@@ -57,7 +57,17 @@ export default function TabLayout() {
         name="favorites" 
         options={({ navigation }) => ({
           title: 'Favoris',
-          tabBarIcon: ({ color }) => <Image source={require('@/assets/icon/icon-favoris.png')} style={{ width: 28, height: 28}} />,
+          tabBarIcon: ({ focused }) => (
+            <Image 
+              source={focused ? require('@/assets/icon/icon-favoris-active.png') : require('@/assets/icon/icon-favoris.png')}
+              style={{ 
+                width: 28, 
+                height: 28,
+                opacity: focused ? 1 : 0.8,
+                transform: [{ scale: focused ? 1.1 : 1 }]
+              }}
+            />
+          ),
           headerShown: false,
           tabBarActiveTintColor: Colors.secondary,
           tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
@@ -67,7 +77,17 @@ export default function TabLayout() {
         name="cart"
         options={({ navigation }) => ({
           title: 'Panier',
-          tabBarIcon: ({ color }) => <Image source={require('@/assets/icon/icon-panier.png')} style={{ width: 28, height: 28}} />,
+          tabBarIcon: ({ focused }) => (
+            <Image 
+              source={focused ? require('@/assets/icon/icon-panier-active.png') : require('@/assets/icon/icon-panier.png')}
+              style={{ 
+                width: 28, 
+                height: 28,
+                opacity: focused ? 1 : 0.8,
+                transform: [{ scale: focused ? 1.1 : 1 }]
+              }}
+            />
+          ),
           headerShown: false,
           tabBarActiveTintColor: Colors.secondary,
           tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
@@ -77,7 +97,17 @@ export default function TabLayout() {
         name="profile"
         options={({ navigation }) => ({
           title: 'Profil',
-          tabBarIcon: ({ color }) => <Image source={require('@/assets/icon/icon-stats.png')} style={{ width: 28, height: 28}} />,
+          tabBarIcon: ({ focused }) => (
+            <Image 
+              source={focused ? require('@/assets/icon/icon-stats-active.png') : require('@/assets/icon/icon-stats.png')}
+              style={{ 
+                width: 28, 
+                height: 28,
+                opacity: focused ? 1 : 0.8,
+                transform: [{ scale: focused ? 1.1 : 1 }]
+              }}
+            />
+          ),
           headerShown: false,
           tabBarActiveTintColor: Colors.secondary,
           tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
