@@ -3,91 +3,144 @@ import { StyleSheet, View, Text, FlatList, SafeAreaView, Image, TouchableOpacity
 import Header from '@/components/navigation/Header';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
+import CustomButton from '@/components/button/CustomButton';
 
-// Définition du type pour un produit du panier
+// Définition mise à jour du type pour un produit du panier
 type CartItem = {
   id: string;
   title: string;
-  price: number;
+  unitPrice: number; // ex: 2.40
+  unit: string; // ex: '€/kg'
   seller: string;
-  quantity: number;
-  image: any;
+  quantityValue: number; // ex: 500
+  quantityUnit: string; // ex: 'g'
+  category: string; // ex: 'Fruits'
+  image: any; // Garder 'any' pour l'instant, idéalement string pour URI
 };
 
-// Données fictives pour le panier
+// Données fictives avec l'image logo.png
 const initialCartItems: CartItem[] = [
   {
     id: '1',
-    title: 'Panier de légumes bio',
-    price: 15.99,
-    seller: 'Ferme des Oliviers',
-    quantity: 1,
+    title: 'Courgettes',
+    unitPrice: 2.40,
+    unit: '€/kg',
+    seller: 'La Ferme Locale',
+    quantityValue: 500,
+    quantityUnit: 'g',
+    category: 'Légumes',
     image: require('@/assets/images/brand/logo.png')
   },
   {
     id: '2',
-    title: 'Assortiment de fromages',
-    price: 24.50,
-    seller: 'Fromagerie Martin',
-    quantity: 2,
+    title: 'Fraises',
+    unitPrice: 5.80,
+    unit: '€/kg',
+    seller: 'La Ferme Locale',
+    quantityValue: 200,
+    quantityUnit: 'g',
+    category: 'Fruits',
     image: require('@/assets/images/brand/logo.png')
   },
   {
     id: '3',
-    title: 'Miel local 500g',
-    price: 12.00,
-    seller: 'Rucher des Cévennes',
-    quantity: 1,
+    title: 'Tomates',
+    unitPrice: 2.50,
+    unit: '€/kg',
+    seller: 'La Ferme Locale',
+    quantityValue: 100,
+    quantityUnit: 'g',
+    category: 'Fruits',
     image: require('@/assets/images/brand/logo.png')
   },
 ];
 
+// Fonction pour grouper les items par vendeur
+const groupItemsBySeller = (items: CartItem[]) => {
+  return items.reduce((acc, item) => {
+    const seller = item.seller;
+    if (!acc[seller]) {
+      acc[seller] = [];
+    }
+    acc[seller].push(item);
+    return acc;
+  }, {} as Record<string, CartItem[]>);
+};
+
 const CartScreen = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems);
   
-  // Calculer le total du panier
-  const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Mettre à jour pour supprimer un article (similaire à updateQuantity avec change = -quantité)
+  const removeItem = (id: string) => {
+    setCartItems(prevItems => prevItems.filter(item => item.id !== id));
+  };
   
-  // Mettre à jour la quantité d'un produit
-  const updateQuantity = (id: string, change: number) => {
-    setCartItems(prevItems => 
-      prevItems.map(item => {
-        if (item.id === id) {
-          const newQuantity = item.quantity + change;
-          // Supprimer l'article si la quantité devient 0
-          if (newQuantity <= 0) {
-            return { ...item, quantity: 0 };
-          }
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      }).filter(item => item.quantity > 0) // Enlever les articles avec quantité 0
-    );
+  // Calculer le prix total de l'item
+  const calculateItemTotal = (item: CartItem) => {
+      // Convertir la quantité en kg si l'unité est €/kg
+      let quantityInKg = item.quantityValue;
+      if (item.quantityUnit === 'g') {
+          quantityInKg /= 1000;
+      } else if (item.quantityUnit === 'mg') {
+          quantityInKg /= 1000000;
+      } // Ajouter d'autres conversions si nécessaire
+      
+      // Si le prix est par pièce ou autre unité non basée sur le poids, ajuster la logique
+      if (item.unit !== '€/kg') {
+          // Pour l'instant, supposons que unitPrice est le prix pour la quantityValue donnée si ce n'est pas €/kg
+          // Ou retourner une logique différente basée sur l'unité.
+          // Pour l'exemple, on va juste calculer basé sur €/kg
+          console.warn(`Calcul du prix non implémenté pour l'unité : ${item.unit}`);
+          // return item.unitPrice * item.quantityValue; // Logique simplifiée si ce n'est pas au poids
+      }
+
+      return item.unitPrice * quantityInKg;
   };
 
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.cartItem}>
-      <Image source={item.image} style={styles.itemImage} />
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle}>{item.title}</Text>
-        <Text style={styles.itemSeller}>{item.seller}</Text>
-        <Text style={styles.itemPrice}>{item.price.toFixed(2).replace('.', ',')} €</Text>
+  const renderCartItem = ({ item }: { item: CartItem }) => {
+    const totalItemPrice = calculateItemTotal(item);
+
+    return (
+      <View style={styles.cartItemContainer}>
+        <Image source={item.image} style={styles.itemImage} />
+        <View style={styles.itemDetails}>
+            <View style={styles.itemInfoTop}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <View style={styles.categoryChip}>
+                    <Text style={styles.categoryText}>{item.category}</Text>
+                </View>
+            </View>
+          <Text style={styles.itemUnitPrice}>{item.unitPrice.toFixed(2).replace('.', ',')}{item.unit}</Text>
+          
+          <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>Quantité:</Text>
+                {/* Remplacer par un vrai Picker/Dropdown plus tard */}
+               <TouchableOpacity style={styles.quantitySelector}> 
+                  <Text style={styles.quantitySelectorText}>{item.quantityValue} {item.quantityUnit}</Text>
+                  <FontAwesome name="chevron-down" size={12} color="#666" />
+               </TouchableOpacity>
+          </View>
+
+          <Text style={styles.itemCalculatedPrice}>{totalItemPrice.toFixed(2).replace('.', ',')}€</Text>
+          
+          <TouchableOpacity style={styles.deleteButton} onPress={() => removeItem(item.id)}>
+            <Text style={styles.deleteButtonText}>Supprimer</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.quantityContainer}>
-        <TouchableOpacity 
-          style={styles.quantityButton}
-          onPress={() => updateQuantity(item.id, -1)}
-        >
-          <Text style={styles.quantityButtonText}>-</Text>
-        </TouchableOpacity>
-        <Text style={styles.quantityText}>{item.quantity}</Text>
-        <TouchableOpacity 
-          style={styles.quantityButton}
-          onPress={() => updateQuantity(item.id, 1)}
-        >
-          <Text style={styles.quantityButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+    );
+  };
+  
+  const groupedItems = groupItemsBySeller(cartItems);
+  const sellers = Object.keys(groupedItems);
+
+  // Composant pour l'en-tête de la liste
+  const ListHeader = () => (
+    <View>
+      <Text style={styles.mainTitle}>Panier</Text>
+      <Text style={styles.infoText}>
+        Une fois validée, récupérez votre commande <Text style={styles.boldText}>sous 2 jours</Text>. Pour toute information complémentaire, n'hésitez pas à contacter directement le producteur.
+      </Text>
     </View>
   );
 
@@ -95,37 +148,49 @@ const CartScreen = () => {
     <SafeAreaView style={styles.container}>
       <Header />
       
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>Votre Panier</Text>
-      </View>
-      
-      {cartItems.length > 0 ? (
-        <>
-          <FlatList
-            data={cartItems}
-            keyExtractor={(item) => item.id}
-            renderItem={renderCartItem}
-            contentContainerStyle={styles.listContainer}
-          />
-          
-          <View style={styles.summaryContainer}>
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalAmount}>{cartTotal.toFixed(2).replace('.', ',')} €</Text>
+      {sellers.length > 0 ? (
+        <FlatList
+          data={sellers}
+          keyExtractor={(seller) => seller}
+          ListHeaderComponent={ListHeader}
+          renderItem={({ item: seller }) => (
+            <View style={styles.sellerSection}>
+              <View style={styles.sellerHeader}>
+                <View>
+                    <Text style={styles.sellerName}>{seller}</Text>
+                    <Text style={styles.productCount}>{groupedItems[seller].length} produit{groupedItems[seller].length > 1 ? 's' : ''}</Text>
+                </View>
+                  <CustomButton
+                    title="voir"
+                    type="link"
+                    size="medium"
+                    fontSize={12}
+                    backgroundColor={Colors.secondary}
+                    textColor={Colors.primary}
+                    onPress={() => {console.log('voir')}}
+                    borderRadius={30}
+                  />
+              </View>
+              <FlatList
+                data={groupedItems[seller]}
+                keyExtractor={(item) => item.id}
+                renderItem={renderCartItem}
+                scrollEnabled={false}
+              />
             </View>
-            <TouchableOpacity style={styles.checkoutButton}>
-              <Text style={styles.checkoutButtonText}>Passer la commande</Text>
-              <FontAwesome name="arrow-right" size={16} color="#fff" style={styles.checkoutIcon} />
-            </TouchableOpacity>
-          </View>
-        </>
+          )}
+          contentContainerStyle={styles.listContainer}
+        />
       ) : (
-        <View style={styles.emptyContainer}>
-          <FontAwesome name="shopping-cart" size={50} color="#ddd" />
-          <Text style={styles.emptyText}>Votre panier est vide</Text>
-          <Text style={styles.emptySubText}>
-            Parcourez les produits et ajoutez-les à votre panier
-          </Text>
+        <View style={{ flex: 1 }}>
+          <ListHeader /> 
+          <View style={styles.emptyContainer}>
+            <FontAwesome name="shopping-cart" size={50} color="#ddd" />
+            <Text style={styles.emptyText}>Votre panier est vide</Text>
+            <Text style={styles.emptySubText}>
+              Parcourez les produits et ajoutez-les à votre panier
+            </Text>
+          </View>
         </View>
       )}
       
@@ -136,125 +201,155 @@ const CartScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FBFBFB',
   },
-  titleContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 22,
+  mainTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#000',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#000',
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  boldText: {
+      fontWeight: 'bold',
   },
   listContainer: {
-    padding: 16,
+    paddingBottom: 16,
+    paddingTop: 16,
   },
-  cartItem: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 16,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  sellerSection: {
+    marginBottom: 10,
+    backgroundColor: 'transparent',
   },
-  itemImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  itemInfo: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'space-between',
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  itemSeller: {
-    fontSize: 14,
-    color: '#666',
-  },
-  itemPrice: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: Colors.primary || '#e67e22',
-  },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginLeft: 12,
-  },
-  quantityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quantityButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  quantityText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginHorizontal: 12,
-  },
-  summaryContainer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  totalContainer: {
+  sellerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    backgroundColor: '#FBFBFB',
+    marginBottom: 0,
   },
-  totalLabel: {
+  sellerName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#000',
   },
-  totalAmount: {
-    fontSize: 22,
+  productCount: {
+      fontSize: 14,
+      color: '#000',
+      marginTop: 2,
+  },
+  viewButtonText: {
+    color: '#8C5B2A',
     fontWeight: 'bold',
-    color: Colors.primary || '#e67e22',
+    fontSize: 14,
   },
-  checkoutButton: {
+  cartItemContainer: {
     flexDirection: 'row',
-    backgroundColor: Colors.primary || '#e67e22',
-    borderRadius: 10,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#FBFBFB',
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  checkoutButtonText: {
+  itemImage: {
+    width: 130,
+    height: 140,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    marginRight: 15,
+  },
+  itemDetails: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  itemInfoTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 5,
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000',
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  categoryChip: {
+      backgroundColor: '#eee',
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      alignSelf: 'flex-start',
+  },
+  categoryText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: '#555',
+  },
+  itemUnitPrice: {
+    fontSize: 14,
+    color: '#000',
+    marginBottom: 8,
+  },
+  quantityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+      justifyContent: 'space-between',
+  },
+  quantityLabel: {
+      fontSize: 14,
+      color: '#000',
+  },
+  quantitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#FBFBFB',
+  },
+  quantitySelectorText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#333',
+      marginRight: 8,
+  },
+  itemCalculatedPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#000',
+    marginBottom: 12,
   },
-  checkoutIcon: {
-    marginLeft: 8,
+  deleteButton: {
+    backgroundColor: '#f7f7f7',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    paddingHorizontal: 15,
+  },
+  deleteButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    marginTop: 30,
   },
   emptyText: {
     fontSize: 18,
