@@ -50,7 +50,6 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-<<<<<<< HEAD
     <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
@@ -59,14 +58,5 @@ function RootLayoutNav() {
         </Stack>
       </ThemeProvider>
     </AuthProvider>
-=======
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="producer" options={{ headerShown: false }} />
-      </Stack>
-    </ThemeProvider>
->>>>>>> b2ad67c (Ajout de la carte interactive des producteurs avec intégration de Leaflet pour Android et React Native Maps pour iOS. Mise à jour des dépendances et ajout d'un écran de détails pour chaque producteur. Documentation mise à jour dans le README.)
   );
 }
