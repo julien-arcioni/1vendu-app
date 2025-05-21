@@ -13,34 +13,7 @@ import MapView, { Marker } from 'react-native-maps';
 // TODO: Ajouter la gestion de l'authentification pour les fonctionnalités de favoris
 // TODO: Implémenter la gestion de la géolocalisation de l'utilisateur et des permissions
 
-// TODO: Remplacer par l'appel API pour récupérer les vraies données des producteurs
-const producers = [
-  { 
-    id: 1, 
-    name: "La Ferme Locale", 
-    description: "Au cœur de votre région, La Ferme Locale est une exploitation à taille humaine...", 
-    latitude: 48.856614, 
-    longitude: 2.3522219,
-    categories: ["Fruits", "Légumes"],
-    distance: 2.7,
-    image: require('@/assets/images/icon.png'), // Image temporaire
-    bio: "Je suis Mathieu, agriculteur passionné, et je cultive ici des fruits et légumes de saison, sans pesticides chimiques, dans le respect de la terre et des cycles naturels. Mon objectif est simple : vous offrir des produits locaux, sains et savoureux, directement du champ à votre assiette.",
-    products: ["Tomates", "Courgettes", "Pommes"]
-  },
-  { 
-    id: 2, 
-    name: "Les Fromages du Terroir", 
-    description: "Fromages artisanaux fabriqués avec passion...", 
-    latitude: 48.860294, 
-    longitude: 2.338629,
-    categories: ["Laitages", "Fromages"],
-    distance: 3.2,
-    image: require('@/assets/images/icon.png'), // Image temporaire
-    bio: "Notre ferme familiale produit des fromages artisanaux depuis trois générations.",
-    products: ["Comté", "Camembert", "Bleu d'Auvergne"]
-  },
-  // TODO: Ajouter d'autres producteurs
-];
+// Données des producteurs seront chargées depuis l'API
 
 // Définition du type pour un producteur
 type Producer = {
@@ -50,9 +23,9 @@ type Producer = {
   latitude: number;
   longitude: number;
   categories: string[];
-  distance: number;
-  image: any;
-  bio: string;
+  distance: number; 
+  image: string | number; // string pour URL, number pour require()
+  bio: string; 
   products: string[];
 };
 
@@ -60,6 +33,62 @@ export default function HomeScreen() {
   const [mapReady, setMapReady] = useState(false);
   const [selectedProducer, setSelectedProducer] = useState<Producer | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [producersData, setProducersData] = useState<Producer[]>([]);
+
+  useEffect(() => {
+    const fetchProducers = async () => {
+      try {
+        const response = await fetch('http://localhost:1337/api/users?filters%5BisSeller%5D%5B%24eq%5D=true&populate%5Bseller%5D%5Bpopulate%5D%5B0%5D=addressPickUp&populate%5Bseller%5D%5Bpopulate%5D%5B1%5D=sellerPhoto');
+        if (!response.ok) {
+          console.error('Erreur HTTP:', response.status, await response.text());
+          setProducersData([]);
+          return;
+        }
+        const result = await response.json(); // result est maintenant attendu comme un tableau [user1, user2, ...]
+        
+        // Vérifier si result est bien un tableau
+        if (Array.isArray(result)) {
+          const fetchedProducers = result.map((user: any) => {
+            // Accès direct aux propriétés de l'utilisateur et de ses relations
+            const sellerProfile = user.seller; 
+            const address = sellerProfile?.addressPickUp;
+            // sellerPhoto est un tableau de médias car multiple:true dans le schéma
+            const photoObject = sellerProfile?.sellerPhoto?.[0]; 
+
+            // Vérifier que les informations essentielles sont présentes
+            if (!sellerProfile || !address || typeof address.latitude !== 'number' || typeof address.longitude !== 'number') {
+              console.warn(`Producteur incomplet ignoré (ID: ${user.id}, Username: ${user.username}): Informations vendeur ou adresse manquantes/invalides.`);
+              return null;
+            }
+
+            return {
+              id: user.id,
+              name: user.username || 'Nom indisponible',
+              // Assurez-vous que ces champs (description, categories, bio, products) existent sur l'objet sellerProfile dans Strapi
+              description: sellerProfile.description || 'Description indisponible',
+              latitude: address.latitude,
+              longitude: address.longitude,
+              categories: sellerProfile.categories || [], 
+              distance: 0, // Placeholder, à calculer
+              image: photoObject?.url ? `http://localhost:1337${photoObject.url}` : require('@/assets/images/icon.png'),
+              bio: sellerProfile.bio || '',
+              products: sellerProfile.products || [], 
+            } as Producer;
+          }).filter((p: Producer | null): p is Producer => p !== null);
+
+          setProducersData(fetchedProducers);
+        } else {
+          console.error("Les données reçues de l'API ne sont pas au format attendu (devrait être un tableau):", result);
+          setProducersData([]);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des producteurs:", error);
+        setProducersData([]);
+      }
+    };
+
+    fetchProducers();
+  }, []);
 
   // Afficher les points après un court délai pour s'assurer que l'interface est chargée
   useEffect(() => {
@@ -128,7 +157,7 @@ export default function HomeScreen() {
             // TODO: Implémenter la mise à jour de la carte lorsque l'utilisateur se déplace
             // TODO: Ajouter une animation lors du chargement de la carte
           >
-            {producers.map((producer) => (
+            {producersData.map((producer) => (
               <Marker
                 key={producer.id}
                 coordinate={{
@@ -165,42 +194,47 @@ export default function HomeScreen() {
               <FontAwesome name="times" size={24} color="#000" />
             </TouchableOpacity>
             
-            {selectedProducer && (
-              <>
-                <Image 
-                  source={selectedProducer.image} 
-                  style={styles.producerImage}
-                  resizeMode="cover"
-                />
-                
-                <View style={styles.categoriesContainer}>
-                  {selectedProducer.categories.map((category, index) => (
-                    <View key={index} style={styles.categoryTag}>
-                      <Text style={styles.categoryText}>{category}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <View style={styles.producerInfo}>
-                  <View style={styles.producerNameContainer}>
-                    <Text style={styles.producerName}>{selectedProducer.name}</Text>
-                    <View style={styles.distanceContainer}>
-                      <FontAwesome name="map-marker" size={16} color="#e74c3c" />
-                      <Text style={styles.distanceText}> à {selectedProducer.distance} km</Text>
-                    </View>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
+              {selectedProducer && (
+                <>
+                  <Image 
+                    source={typeof selectedProducer.image === 'string' ? { uri: selectedProducer.image } : selectedProducer.image} 
+                    style={styles.producerImage}
+                    resizeMode="cover"
+                  />
+                  
+                  <View style={styles.categoriesContainer}>
+                    {selectedProducer.categories.map((category, index) => (
+                      <View key={index} style={styles.categoryTag}>
+                        <Text style={styles.categoryText}>{category}</Text>
+                      </View>
+                    ))}
                   </View>
-                  
-                  <Text style={styles.producerDescription}>{selectedProducer.description}</Text>
-                  
-                  <TouchableOpacity 
-                    style={styles.viewMoreButton}
-                    onPress={handleViewProducerDetail}
-                  >
-                    <FontAwesome name="chevron-right" size={20} color="#000" />
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+
+                  <View style={styles.producerInfo}>
+                    <View style={styles.producerNameContainer}>
+                      <Text style={styles.producerName}>{selectedProducer.name}</Text>
+                      <View style={styles.distanceContainer}>
+                        <FontAwesome name="map-marker" size={16} color="#e74c3c" />
+                        <Text style={styles.distanceText}> à {selectedProducer.distance} km</Text>
+                      </View>
+                    </View>
+                    
+                    <Text style={styles.producerDescription}>{selectedProducer.description}</Text>
+                    
+                    <TouchableOpacity 
+                      style={styles.viewMoreButton}
+                      onPress={handleViewProducerDetail}
+                    >
+                      <FontAwesome name="chevron-right" size={20} color="#000" />
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -321,7 +355,6 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   producerInfo: {
-    flex: 1,
     paddingHorizontal: 10,
   },
   producerNameContainer: {
