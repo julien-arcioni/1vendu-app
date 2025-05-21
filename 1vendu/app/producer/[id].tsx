@@ -312,7 +312,7 @@ export default function ProducerDetailScreen() {
             </View>
             <View style={styles.productActions}>
               <View style={styles.quantitySelector}>
-                <Text>0 g</Text> {/* Placeholder */}
+                <Text>0 g</Text>
                 <FontAwesome name="chevron-down" size={16} color="#888" />
               </View>
               <TouchableOpacity style={styles.addToCartButtonProd}>
