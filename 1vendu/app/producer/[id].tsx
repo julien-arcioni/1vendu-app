@@ -71,6 +71,7 @@ type Product = {
   name: string;
   price: string; 
   image: string | number; 
+  type?: string;
 };
 
 type Producer = {
@@ -104,6 +105,7 @@ export default function ProducerDetailScreen() {
   const [producer, setProducer] = useState<Producer | null>(null);
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [selectedProductCategory, setSelectedProductCategory] = useState<string | null>(null);
+  const [productCategoriesForFilter, setProductCategoriesForFilter] = useState<string[]>([]);
   
   useEffect(() => {
     const producerId = typeof id === 'string' ? parseInt(id, 10) : Array.isArray(id) ? parseInt(id[0], 10) : 0;
@@ -165,6 +167,8 @@ export default function ProducerDetailScreen() {
                     price = `${Number(priceValue).toFixed(2).replace('.', ',')} €/kg`;
                 }
 
+                const productType = item.type || attributes?.type;
+
                 // Accès à la galerie du produit
                 const productGalleryArray = attributes?.gallery || item.gallery;
                 if (productGalleryArray && productGalleryArray.length > 0 && productGalleryArray[0]?.url) {
@@ -176,9 +180,15 @@ export default function ProducerDetailScreen() {
                     name: name,
                     price: price,
                     image: productImage,
+                    type: productType,
                 };
             }) : [];
             
+            const uniqueTypes = Array.from(
+              new Set(formattedProducts.map(p => p.type).filter(Boolean) as string[])
+            );
+            setProductCategoriesForFilter(uniqueTypes);
+
             let categoriesFormatted: string[] = [];
             if (sellerProfile?.categories) {
               if (typeof sellerProfile.categories[0] === 'string') {
@@ -202,7 +212,7 @@ export default function ProducerDetailScreen() {
               distance: 2.7, // Placeholder
               image: profileImage,
               coverImage: coverImageToUse, // Utiliser l'image de couverture déterminée
-              bio: data.description || sellerProfile?.bio || "Je suis un agriculteur passionné...", // Bio détaillée
+              bio: data.description || sellerProfile?.bio || "", // Bio détaillée
               products: formattedProducts,
               address: formatAddress(addressData),
               phone: data.phone || sellerProfile?.phone || '01 02 03 04 05',
@@ -230,7 +240,7 @@ export default function ProducerDetailScreen() {
   // Filtrer les produits basé sur la recherche et la catégorie sélectionnée
   const filteredProducts = producer.products.filter(product => {
     const matchesSearchQuery = product.name.toLowerCase().includes(productSearchQuery.toLowerCase());
-    const matchesCategory = selectedProductCategory ? producer.categories.includes(selectedProductCategory) : true;
+    const matchesCategory = selectedProductCategory ? product.type === selectedProductCategory : true;
     return matchesSearchQuery && matchesCategory;
   });
 
@@ -298,18 +308,19 @@ export default function ProducerDetailScreen() {
             placeholderTextColor="#aaa"
           />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {/* Utiliser les catégories du producteur ou des catégories statiques */}
-          {producer.categories.map(category => (
-            <TouchableOpacity 
-              key={category} 
-              style={[styles.categoryChip, selectedProductCategory === category && styles.categoryChipActive]}
-              onPress={() => setSelectedProductCategory(selectedProductCategory === category ? null : category)}
-            >
-              <Text style={[styles.categoryChipText, selectedProductCategory === category && styles.categoryChipTextActive]}>{category}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {productCategoriesForFilter.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+            {productCategoriesForFilter.map(category => (
+              <TouchableOpacity 
+                key={category} 
+                style={[styles.categoryChip, selectedProductCategory === category && styles.categoryChipActive]}
+                onPress={() => setSelectedProductCategory(selectedProductCategory === category ? null : category)}
+              >
+                <Text style={[styles.categoryChipText, selectedProductCategory === category && styles.categoryChipTextActive]}>{category}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {filteredProducts.map(product => (
           <View key={product.id} style={styles.productCard}>
