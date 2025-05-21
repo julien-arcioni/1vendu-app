@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Linking, Platform, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Linking, Platform, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -83,7 +83,7 @@ type Producer = {
   categories: string[]; 
   distance: number; 
   image: string | number; 
-  coverImage: string | number; 
+  coverImages: (string | number)[];
   bio: string; 
   products: Product[];
   address: string; 
@@ -100,12 +100,16 @@ const formatAddress = (addr: NonNullable<ApiProducerData['seller']>['addressPick
   return [parts, cityPostalCode].filter(Boolean).join(', ') || 'Adresse non disponible';
 };
 
+const { width: screenWidth } = Dimensions.get('window');
+
 export default function ProducerDetailScreen() {
   const { id } = useLocalSearchParams();
   const [producer, setProducer] = useState<Producer | null>(null);
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [selectedProductCategory, setSelectedProductCategory] = useState<string | null>(null);
   const [productCategoriesForFilter, setProductCategoriesForFilter] = useState<string[]>([]);
+  const [activeCoverSlideIndex, setActiveCoverSlideIndex] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
   
   useEffect(() => {
     const producerId = typeof id === 'string' ? parseInt(id, 10) : Array.isArray(id) ? parseInt(id[0], 10) : 0;
@@ -144,10 +148,14 @@ export default function ProducerDetailScreen() {
                  profileImage = `http://localhost:1337${data.userPhoto.url}`;
             }
 
-            // Image de Couverture (vient de sellerPhoto)
-            let coverImageToUse: string | number = require('@/assets/images/splash-icon.png');
-            if (sellerProfile?.sellerPhoto && sellerProfile.sellerPhoto.length > 0 && sellerProfile.sellerPhoto[0]?.url) {
-              coverImageToUse = `http://localhost:1337${sellerProfile.sellerPhoto[0].url}`;
+            // Images de Couverture (vient de sellerPhoto)
+            let processedCoverImages: (string | number)[] = [];
+            if (sellerProfile?.sellerPhoto && sellerProfile.sellerPhoto.length > 0) {
+              processedCoverImages = sellerProfile.sellerPhoto.map(photo => 
+                photo.url ? `http://localhost:1337${photo.url}` : require('@/assets/images/splash-icon.png')
+              );
+            } else {
+              processedCoverImages = [require('@/assets/images/splash-icon.png')];
             }
             
             let productsSource = sellerProfile?.products;
@@ -211,7 +219,7 @@ export default function ProducerDetailScreen() {
               categories: categoriesFormatted, 
               distance: 2.7, // Placeholder
               image: profileImage,
-              coverImage: coverImageToUse, // Utiliser l'image de couverture déterminée
+              coverImages: processedCoverImages,
               bio: data.description || sellerProfile?.bio || "", // Bio détaillée
               products: formattedProducts,
               address: formatAddress(addressData),
@@ -244,15 +252,52 @@ export default function ProducerDetailScreen() {
     return matchesSearchQuery && matchesCategory;
   });
 
+  const handleScroll = (event: any) => {
+    const slideSize = event.nativeEvent.layoutMeasurement.width;
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const currentIndex = Math.round(contentOffset / slideSize);
+    if (currentIndex !== activeCoverSlideIndex) {
+      setActiveCoverSlideIndex(currentIndex);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header Section */}
       <View style={styles.headerContainer}>
-        <Image 
-          source={typeof producer.coverImage === 'string' ? { uri: producer.coverImage } : producer.coverImage} 
-          style={styles.coverImage} 
-        />
+        {producer && producer.coverImages && producer.coverImages.length > 0 && (
+          <View>
+            <ScrollView
+              ref={scrollViewRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleScroll}
+              style={{ width: screenWidth, height: styles.coverImage.height }}
+            >
+              {producer.coverImages.map((imgSrc, index) => (
+                <Image
+                  key={index}
+                  source={typeof imgSrc === 'string' ? { uri: imgSrc } : imgSrc}
+                  style={[styles.coverImage, { width: screenWidth }]}
+                />
+              ))}
+            </ScrollView>
+            {producer.coverImages.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {producer.coverImages.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      activeCoverSlideIndex === index ? styles.paginationDotActive : {},
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <FontAwesome name="arrow-left" size={20} color="#fff" />
         </TouchableOpacity>
@@ -566,4 +611,21 @@ const styles = StyleSheet.create({
   },
   tabContainer: {},
   tabContent: {},
+  paginationContainer: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'white',
+    marginHorizontal: 4,
+  },
+  paginationDotActive: {
+    backgroundColor: '#E59943',
+  },
 }); 

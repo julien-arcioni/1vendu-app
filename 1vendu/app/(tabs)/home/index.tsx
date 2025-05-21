@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, Modal, Image, ScrollView, Platform } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
 import Header from '@/components/navigation/Header';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 // Importer MapView et Marker spécifiquement pour iOS si la plateforme est iOS
 import MapView, { Marker } from 'react-native-maps';
@@ -35,60 +35,63 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [producersData, setProducersData] = useState<Producer[]>([]);
 
-  useEffect(() => {
-    const fetchProducers = async () => {
-      try {
-        const response = await fetch('http://localhost:1337/api/users?filters%5BisSeller%5D%5B%24eq%5D=true&populate%5Bseller%5D%5Bpopulate%5D%5B0%5D=addressPickUp&populate%5Bseller%5D%5Bpopulate%5D%5B1%5D=sellerPhoto');
-        if (!response.ok) {
-          console.error('Erreur HTTP:', response.status, await response.text());
+  // Utiliser useFocusEffect pour charger les données à chaque fois que l'écran est focus
+  useFocusEffect(
+    useCallback(() => {
+      const fetchProducers = async () => {
+        try {
+          const response = await fetch('http://localhost:1337/api/users?filters%5BisSeller%5D%5B%24eq%5D=true&populate%5Bseller%5D%5Bpopulate%5D%5B0%5D=addressPickUp&populate%5Bseller%5D%5Bpopulate%5D%5B1%5D=sellerPhoto');
+          if (!response.ok) {
+            console.error('Erreur HTTP:', response.status, await response.text());
+            setProducersData([]);
+            return;
+          }
+          const result = await response.json();
+          
+          if (Array.isArray(result)) {
+            const fetchedProducers = result.map((user: any) => {
+              const sellerProfile = user.seller; 
+              const address = sellerProfile?.addressPickUp;
+              const photoObject = sellerProfile?.sellerPhoto?.[0]; 
+
+              // Vérifier que les informations essentielles sont présentes
+              if (!sellerProfile || !address || typeof address.latitude !== 'number' || typeof address.longitude !== 'number') {
+                console.warn(`Producteur incomplet ignoré (ID: ${user.id}, Username: ${user.username}): Informations vendeur ou adresse manquantes/invalides.`);
+                return null;
+              }
+
+              return {
+                id: user.id,
+                name: user.username || 'Nom indisponible',
+                description: sellerProfile.description || 'Description indisponible',
+                latitude: address.latitude,
+                longitude: address.longitude,
+                categories: sellerProfile.categories || [], 
+                distance: 0, // Placeholder, à calculer
+                image: photoObject?.url ? `http://localhost:1337${photoObject.url}` : require('@/assets/images/splash-icon.png'),
+                bio: sellerProfile.bio || '',
+                products: sellerProfile.products || [], 
+              } as Producer;
+            }).filter((p: Producer | null): p is Producer => p !== null);
+
+            setProducersData(fetchedProducers);
+          } else {
+            console.error("Les données reçues de l'API ne sont pas au format attendu (devrait être un tableau):", result);
+            setProducersData([]);
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération des producteurs:", error);
           setProducersData([]);
-          return;
         }
-        const result = await response.json(); // result est maintenant attendu comme un tableau [user1, user2, ...]
-        
-        // Vérifier si result est bien un tableau
-        if (Array.isArray(result)) {
-          const fetchedProducers = result.map((user: any) => {
-            // Accès direct aux propriétés de l'utilisateur et de ses relations
-            const sellerProfile = user.seller; 
-            const address = sellerProfile?.addressPickUp;
-            // sellerPhoto est un tableau de médias car multiple:true dans le schéma
-            const photoObject = sellerProfile?.sellerPhoto?.[0]; 
+      };
 
-            // Vérifier que les informations essentielles sont présentes
-            if (!sellerProfile || !address || typeof address.latitude !== 'number' || typeof address.longitude !== 'number') {
-              console.warn(`Producteur incomplet ignoré (ID: ${user.id}, Username: ${user.username}): Informations vendeur ou adresse manquantes/invalides.`);
-              return null;
-            }
+      fetchProducers();
 
-            return {
-              id: user.id,
-              name: user.username || 'Nom indisponible',
-              // Assurez-vous que ces champs (description, categories, bio, products) existent sur l'objet sellerProfile dans Strapi
-              description: sellerProfile.description || 'Description indisponible',
-              latitude: address.latitude,
-              longitude: address.longitude,
-              categories: sellerProfile.categories || [], 
-              distance: 0, // Placeholder, à calculer
-              image: photoObject?.url ? `http://localhost:1337${photoObject.url}` : require('@/assets/images/icon.png'),
-              bio: sellerProfile.bio || '',
-              products: sellerProfile.products || [], 
-            } as Producer;
-          }).filter((p: Producer | null): p is Producer => p !== null);
-
-          setProducersData(fetchedProducers);
-        } else {
-          console.error("Les données reçues de l'API ne sont pas au format attendu (devrait être un tableau):", result);
-          setProducersData([]);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération des producteurs:", error);
-        setProducersData([]);
-      }
-    };
-
-    fetchProducers();
-  }, []);
+      return () => {
+        console.log("Nettoyage de l'effet fetchProducers (HomeScreen unfocused)");
+      };
+    }, [])
+  );
 
   // Afficher les points après un court délai pour s'assurer que l'interface est chargée
   useEffect(() => {
