@@ -14,9 +14,6 @@ install! 'cocoapods',
 prepare_react_native_project!
 
 target '1vendu' do
-  # Force react-native-maps to use Apple Maps only on iOS
-  ENV['RN_MAPS_NO_GOOGLE_MAPS'] = 'true'
-
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
