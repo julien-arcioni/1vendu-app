@@ -6,18 +6,12 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 // Imports spécifiques à iOS
 import RNMapView, { Marker } from 'react-native-maps';
 
-// TODO: Intégrer l'API pour récupérer les données détaillées du producteur
-// TODO: Implémenter un système de commentaires et notations
-// TODO: Ajouter des fonctionnalités de partage sur les réseaux sociaux
-// TODO: Intégrer un système de commande et de panier
-
-// Type pour un produit venant de l'API
 type ApiProduct = {
   id: number;
   attributes: {
     title: string;
-    price: number; // Sera un nombre depuis l'API
-    gallery?: { // gallery est optionnelle et peut ne pas avoir de données
+    price: number;
+    gallery?: {
       data: {
         id: number;
         attributes: {
@@ -25,7 +19,6 @@ type ApiProduct = {
         };
       }[];
     };
-    // Ajoutez d'autres champs de produit si nécessaire
   };
 };
 
@@ -36,19 +29,21 @@ type ApiProducerData = {
   email: string; 
   description?: string;
   phone?: string;
+  userPhoto?: {
+    id: number;
+    url: string;
+    [key: string]: any;
+  };
   seller?: { 
     id: number;
     companyName?: string; 
-    description?: string; // Description courte spécifique au vendeur (différente de la bio)
-    bio?: string; // Bio spécifique au profil vendeur (si vous voulez la garder distincte)
-    sellerPhoto?: { 
-      data?: {
+    description?: string;
+    bio?: string;
+    sellerPhoto?: {
         id: number;
-        attributes: {
-          url: string;
-        };
-      }[] | { id: number; attributes: { url: string; }; }; 
-    };
+        url: string;
+        [key: string]: any;
+    }[]; 
     addressPickUp?: { 
       id: number;
       address1?: string;
@@ -61,9 +56,9 @@ type ApiProducerData = {
       longitude?: number;
     };
     products?: {
-      data: ApiProduct[]; // Ceci est si Strapi retourne { data: [...] } pour la relation
-    } | ApiProduct[]; // Ou directement un tableau de produits, comme vu dans le log
-    phone?: string; // Téléphone spécifique au profil vendeur
+      data: ApiProduct[]; 
+    } | ApiProduct[]; 
+    phone?: string; 
     website?: string;
     openingHours?: string; 
     categories?: string[] | { name: string }[]; 
@@ -74,21 +69,21 @@ type ApiProducerData = {
 type Product = {
   id: number;
   name: string;
-  price: string; // Formaté pour affichage
-  image: string | number; // URL ou require()
+  price: string; 
+  image: string | number; 
 };
 
 type Producer = {
   id: number;
   name: string;
-  description: string; // Description courte du vendeur
+  description: string; 
   latitude: number;
   longitude: number;
-  categories: string[]; // Catégories de produits que le vendeur propose
+  categories: string[]; 
   distance: number; 
-  image: string | number; // Photo de profil du vendeur (ronde)
-  coverImage: string | number; // Image de couverture (grande image de fond) - Placeholder pour l'instant
-  bio: string; // Bio détaillée (À propos)
+  image: string | number; 
+  coverImage: string | number; 
+  bio: string; 
   products: Product[];
   address: string; 
   phone: string;
@@ -97,7 +92,6 @@ type Producer = {
   website: string;
 };
 
-// Le type pour le paramètre addr doit correspondre au type de seller.addressPickUp
 const formatAddress = (addr: NonNullable<ApiProducerData['seller']>['addressPickUp']) => {
   if (!addr) return 'Adresse non disponible';
   const parts = [addr.address1, addr.address2, addr.address3].filter(Boolean).join(', ');
@@ -119,10 +113,9 @@ export default function ProducerDetailScreen() {
         try {
           const populateQuery = [
             'populate[seller][populate][addressPickUp]=*',
-            'populate[seller][populate][sellerPhoto]=*', // Pour l'image de profil ronde
+            'populate[seller][populate][sellerPhoto]=*', // Pour l'image de couverture/bannière
             'populate[seller][populate][products][populate][gallery]=*',
-            // TODO: Ajouter une population pour une image de couverture si elle existe sur User ou Seller
-            // 'populate[userPhoto]=*' // Si l'image de profil vient directement de l'user
+            'populate[userPhoto]=*' // Pour l'image de profil de l'utilisateur
           ].join('&');
           
           const response = await fetch(`http://localhost:1337/api/users/${producerId}?${populateQuery}`);
@@ -143,35 +136,45 @@ export default function ProducerDetailScreen() {
 
             const addressData = sellerProfile?.addressPickUp;
             
-            let profileImage: string | number = require('@/assets/images/icon.png'); // Placeholder pour l'image de profil ronde
-            // Priorité à sellerPhoto, puis userPhoto si défini dans le schéma User et peuplé
-            const sellerPhotoField = sellerProfile?.sellerPhoto;
-            if (sellerPhotoField?.data) {
-              const photoData = Array.isArray(sellerPhotoField.data) ? sellerPhotoField.data[0] : sellerPhotoField.data;
-              if (photoData?.attributes?.url) {
-                profileImage = `http://localhost:1337${photoData.attributes.url}`;
-              }
-            } else if ((data as any).userPhoto?.data?.attributes?.url) { // Supposant que userPhoto est sur data
-                 profileImage = `http://localhost:1337${(data as any).userPhoto.data.attributes.url}`;
+            // Image de Profil (priorité à userPhoto)
+            let profileImage: string | number = require('@/assets/images/icon.png'); 
+            if (data.userPhoto?.url) {
+                 profileImage = `http://localhost:1337${data.userPhoto.url}`;
+            }
+
+            // Image de Couverture (vient de sellerPhoto)
+            let coverImageToUse: string | number = require('@/assets/images/splash-icon.png');
+            if (sellerProfile?.sellerPhoto && sellerProfile.sellerPhoto.length > 0 && sellerProfile.sellerPhoto[0]?.url) {
+              coverImageToUse = `http://localhost:1337${sellerProfile.sellerPhoto[0].url}`;
             }
             
-            // Placeholder pour l'image de couverture
-            const coverImagePlaceholder: string | number = require('@/assets/images/splash-icon.png');
-
             let productsSource = sellerProfile?.products;
             if (productsSource && (productsSource as any).data) {
                 productsSource = (productsSource as any).data;
             }
 
-            const formattedProducts: Product[] = Array.isArray(productsSource) ? productsSource.map((p: any) => {
+            const formattedProducts: Product[] = Array.isArray(productsSource) ? productsSource.map((item: any) => { 
                 let productImage: string | number = require('@/assets/images/icon.png');
-                if (p.gallery && Array.isArray(p.gallery) && p.gallery.length > 0 && p.gallery[0]?.url) {
-                    productImage = `http://localhost:1337${p.gallery[0].url}`;
+                const attributes = item.attributes;
+
+                const name = attributes?.title || item.title || "Nom de produit inconnu";
+                
+                let price = 'Prix non spécifié';
+                const priceValue = attributes?.price !== undefined ? attributes.price : item.price;
+                if (priceValue !== undefined) {
+                    price = `${Number(priceValue).toFixed(2).replace('.', ',')} €/kg`;
                 }
+
+                // Accès à la galerie du produit
+                const productGalleryArray = attributes?.gallery || item.gallery;
+                if (productGalleryArray && productGalleryArray.length > 0 && productGalleryArray[0]?.url) {
+                  productImage = `http://localhost:1337${productGalleryArray[0].url}`;
+                }
+
                 return {
-                    id: p.id,
-                    name: p.title || "Nom de produit inconnu",
-                    price: p.price ? `${Number(p.price).toFixed(2).replace('.', ',')} €/kg` : 'Prix non spécifié', 
+                    id: item.id,
+                    name: name,
+                    price: price,
                     image: productImage,
                 };
             }) : [];
@@ -184,7 +187,7 @@ export default function ProducerDetailScreen() {
                 categoriesFormatted = (sellerProfile.categories as { name: string }[]).map(c => c.name);
               }
             } else {
-              // Catégories par défaut si non fournies par l'API, basées sur l'image
+              // Catégories par défaut si non fournies par l'API
               categoriesFormatted = ["Fruits", "Légumes", "Oeufs"];
             }
 
@@ -198,7 +201,7 @@ export default function ProducerDetailScreen() {
               categories: categoriesFormatted, 
               distance: 2.7, // Placeholder
               image: profileImage,
-              coverImage: coverImagePlaceholder, // Utiliser le placeholder
+              coverImage: coverImageToUse, // Utiliser l'image de couverture déterminée
               bio: data.description || sellerProfile?.bio || "Je suis un agriculteur passionné...", // Bio détaillée
               products: formattedProducts,
               address: formatAddress(addressData),
@@ -227,7 +230,7 @@ export default function ProducerDetailScreen() {
   // Filtrer les produits basé sur la recherche et la catégorie sélectionnée
   const filteredProducts = producer.products.filter(product => {
     const matchesSearchQuery = product.name.toLowerCase().includes(productSearchQuery.toLowerCase());
-    const matchesCategory = selectedProductCategory ? producer.categories.includes(selectedProductCategory) /* Correction ici, vérifier si la catégorie DU PRODUIT correspond */ : true; // Doit être basé sur product.category
+    const matchesCategory = selectedProductCategory ? producer.categories.includes(selectedProductCategory) : true;
     return matchesSearchQuery && matchesCategory;
   });
 
@@ -236,7 +239,10 @@ export default function ProducerDetailScreen() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header Section */}
       <View style={styles.headerContainer}>
-        <Image source={producer.coverImage as any} style={styles.coverImage} />
+        <Image 
+          source={typeof producer.coverImage === 'string' ? { uri: producer.coverImage } : producer.coverImage} 
+          style={styles.coverImage} 
+        />
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <FontAwesome name="arrow-left" size={20} color="#fff" />
         </TouchableOpacity>
@@ -244,7 +250,10 @@ export default function ProducerDetailScreen() {
           <FontAwesome name="share-alt" size={20} color="#fff" />
         </TouchableOpacity>
         <View style={styles.profileImageContainer}>
-          <Image source={producer.image as any} style={styles.profileImage} />
+          <Image 
+            source={typeof producer.image === 'string' ? { uri: producer.image } : producer.image} 
+            style={styles.profileImage} 
+          />
         </View>
       </View>
 
@@ -304,7 +313,10 @@ export default function ProducerDetailScreen() {
 
         {filteredProducts.map(product => (
           <View key={product.id} style={styles.productCard}>
-            <Image source={product.image as any} style={styles.productItemImage} />
+            <Image 
+              source={typeof product.image === 'string' ? { uri: product.image } : product.image} 
+              style={styles.productItemImage} 
+            />
             <View style={styles.productDetails}>
               <Text style={styles.productItemName}>{product.name}</Text>
               <Text style={styles.productItemPrice}>{product.price}</Text>
@@ -343,18 +355,18 @@ const styles = StyleSheet.create({
   },
   coverImage: {
     width: '100%',
-    height: 200, // Ajuster selon le design
+    height: 200,
     resizeMode: 'cover',
   },
-  backButton: { // Ajusté pour être sur l'image de couverture
+  backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 40 : 20, // Marge pour la barre de statut
+    top: Platform.OS === 'ios' ? 40 : 20,
     left: 15,
     backgroundColor: 'rgba(0,0,0,0.3)',
     padding: 8,
     borderRadius: 20,
   },
-  shareIcon: { // Ajusté pour être sur l'image de couverture
+  shareIcon: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 40 : 20,
     right: 15,
@@ -364,17 +376,17 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     position: 'absolute',
-    bottom: -50, // Pour superposer sur la section info
+    bottom: -50,
     left: '50%',
-    marginLeft: -50, // Moitié de la largeur de l'image
+    marginLeft: -50,
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
     borderColor: '#fff',
     overflow: 'hidden',
-    elevation: 5, // Android shadow
-    shadowColor: '#000', // iOS shadow
+    elevation: 5,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
@@ -387,9 +399,9 @@ const styles = StyleSheet.create({
 
   // Producer Info
   producerInfoContainer: {
-    marginTop: 60, // Espace pour l'image de profil superposée
+    marginTop: 60,
     paddingHorizontal: 20,
-    alignItems: 'center', // Centrer le nom
+    alignItems: 'center',
   },
   producerNameText: {
     fontSize: 24,
@@ -410,7 +422,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    alignSelf: 'flex-start', // Aligner à gauche dans le conteneur centré
+    alignSelf: 'flex-start',
   },
   contactIcon: {
     marginRight: 10,
@@ -422,7 +434,7 @@ const styles = StyleSheet.create({
   bioText: {
     fontSize: 15,
     color: '#555',
-    textAlign: 'left', // Justifié ou à gauche selon le design
+    textAlign: 'left',
     lineHeight: 22,
     marginTop: 15,
     marginBottom: 20,
@@ -442,7 +454,7 @@ const styles = StyleSheet.create({
   productSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0', // Couleur de fond de la barre de recherche
+    backgroundColor: '#f0f0f0',
     borderRadius: 25,
     paddingHorizontal: 15,
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
@@ -467,7 +479,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   categoryChipActive: {
-    backgroundColor: '#e67e22', // Couleur pour la catégorie active
+    backgroundColor: '#e67e22',
   },
   categoryChipText: {
     fontSize: 14,
@@ -483,7 +495,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginBottom: 15,
-    // Ombre subtile pour les cartes
     elevation: 2, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -493,7 +504,7 @@ const styles = StyleSheet.create({
     borderColor: '#eee'
   },
   productItemImage: {
-    width: 100, // Taille ajustée
+    width: 100,
     height: 100,
     borderRadius: 8,
     marginRight: 15,
@@ -509,12 +520,12 @@ const styles = StyleSheet.create({
   },
   productItemPrice: {
     fontSize: 15,
-    color: '#e67e22', // Couleur du prix
+    color: '#e67e22',
     marginBottom: 8,
   },
   productActions: {
-    alignItems: 'flex-end', // Aligner les actions à droite
-    justifyContent: 'space-between', // Espacer quantité et bouton
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
   },
   quantitySelector: {
     flexDirection: 'row',
@@ -523,7 +534,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
-    marginBottom: 10, // Espace avant le bouton ajouter
+    marginBottom: 10,
   },
   addToCartButtonProd: {
     backgroundColor: '#e67e22',
@@ -542,8 +553,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  // Styles pour les anciens onglets (peuvent être supprimés ou réutilisés si besoin)
-  tabContainer: {}, // Vide pour l'instant
-  tabContent: {}, // Vide pour l'instant
-  // ... (autres styles existants qui pourraient être supprimés si non utilisés)
+  tabContainer: {},
+  tabContent: {},
 }); 
