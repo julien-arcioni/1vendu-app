@@ -1,284 +1,328 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
+import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Linking, Platform, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 // Imports spécifiques à iOS
-import RNMapView from 'react-native-maps';
-import { Marker } from 'react-native-maps';
+import RNMapView, { Marker } from 'react-native-maps';
 
 // TODO: Intégrer l'API pour récupérer les données détaillées du producteur
 // TODO: Implémenter un système de commentaires et notations
 // TODO: Ajouter des fonctionnalités de partage sur les réseaux sociaux
 // TODO: Intégrer un système de commande et de panier
 
-// TODO: Remplacer par un vrai appel d'API
-const getProducerById = (id: number) => {
-  // Données fictives pour la démonstration
-  const producers = [
-    { 
-      id: 1, 
-      name: "La Ferme Locale", 
-      description: "Au cœur de votre région, La Ferme Locale est une exploitation à taille humaine...", 
-      latitude: 48.856614, 
-      longitude: 2.3522219,
-      categories: ["Fruits", "Légumes"],
-      distance: 2.7,
-      image: require('@/assets/images/icon.png'), // Image temporaire
-      bio: "Je suis Mathieu, agriculteur passionné, et je cultive ici des fruits et légumes de saison, sans pesticides chimiques, dans le respect de la terre et des cycles naturels. Mon objectif est simple : vous offrir des produits locaux, sains et savoureux, directement du champ à votre assiette.",
-      products: [
-        { id: 1, name: "Tomates juteuses", price: "3,50 €/kg", image: require('@/assets/images/icon.png') },
-        { id: 2, name: "Courgettes croquantes", price: "2,80 €/kg", image: require('@/assets/images/icon.png') },
-        { id: 3, name: "Pommes parfumées", price: "4,20 €/kg", image: require('@/assets/images/icon.png') }
-      ],
-      address: "123 Chemin des Agriculteurs, 75000 Paris",
-      phone: "+33 1 23 45 67 89",
-      email: "mathieu@lafermelocale.fr",
-      hours: "Lundi au Samedi: 9h - 18h\nDimanche: Fermé",
-      website: "https://lafermelocale.fr"
-    },
-    // TODO: Ajouter d'autres producteurs
-  ];
-  
-  return producers.find(p => p.id === id) || null;
+// Type pour un produit venant de l'API
+type ApiProduct = {
+  id: number;
+  attributes: {
+    title: string;
+    price: number; // Sera un nombre depuis l'API
+    gallery?: { // gallery est optionnelle et peut ne pas avoir de données
+      data: {
+        id: number;
+        attributes: {
+          url: string;
+        };
+      }[];
+    };
+    // Ajoutez d'autres champs de produit si nécessaire
+  };
 };
 
+// Type pour le producteur venant de l'API (utilisateur avec profil vendeur)
+type ApiProducerData = {
+  id: number;
+  username: string; 
+  email: string; 
+  description?: string;
+  phone?: string;
+  seller?: { 
+    id: number;
+    companyName?: string; 
+    description?: string; // Description courte spécifique au vendeur (différente de la bio)
+    bio?: string; // Bio spécifique au profil vendeur (si vous voulez la garder distincte)
+    sellerPhoto?: { 
+      data?: {
+        id: number;
+        attributes: {
+          url: string;
+        };
+      }[] | { id: number; attributes: { url: string; }; }; 
+    };
+    addressPickUp?: { 
+      id: number;
+      address1?: string;
+      address2?: string;
+      address3?: string;
+      postalCode?: string;
+      city?: string;
+      country?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    products?: {
+      data: ApiProduct[]; // Ceci est si Strapi retourne { data: [...] } pour la relation
+    } | ApiProduct[]; // Ou directement un tableau de produits, comme vu dans le log
+    phone?: string; // Téléphone spécifique au profil vendeur
+    website?: string;
+    openingHours?: string; 
+    categories?: string[] | { name: string }[]; 
+  };
+};
+
+// Type utilisé par le composant, après transformation
 type Product = {
   id: number;
   name: string;
-  price: string;
-  image: any;
+  price: string; // Formaté pour affichage
+  image: string | number; // URL ou require()
 };
 
 type Producer = {
   id: number;
   name: string;
-  description: string;
+  description: string; // Description courte du vendeur
   latitude: number;
   longitude: number;
-  categories: string[];
-  distance: number;
-  image: any;
-  bio: string;
+  categories: string[]; // Catégories de produits que le vendeur propose
+  distance: number; 
+  image: string | number; // Photo de profil du vendeur (ronde)
+  coverImage: string | number; // Image de couverture (grande image de fond) - Placeholder pour l'instant
+  bio: string; // Bio détaillée (À propos)
   products: Product[];
-  address: string;
+  address: string; 
   phone: string;
   email: string;
   hours: string;
   website: string;
 };
 
+// Le type pour le paramètre addr doit correspondre au type de seller.addressPickUp
+const formatAddress = (addr: NonNullable<ApiProducerData['seller']>['addressPickUp']) => {
+  if (!addr) return 'Adresse non disponible';
+  const parts = [addr.address1, addr.address2, addr.address3].filter(Boolean).join(', ');
+  const cityPostalCode = [addr.postalCode, addr.city].filter(Boolean).join(' ');
+  return [parts, cityPostalCode].filter(Boolean).join(', ') || 'Adresse non disponible';
+};
+
 export default function ProducerDetailScreen() {
   const { id } = useLocalSearchParams();
   const [producer, setProducer] = useState<Producer | null>(null);
-  
-  // Sections pour l'onglet sélectionné
-  const [activeTab, setActiveTab] = useState('products');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [selectedProductCategory, setSelectedProductCategory] = useState<string | null>(null);
   
   useEffect(() => {
-    // Conversion de l'ID en nombre
     const producerId = typeof id === 'string' ? parseInt(id, 10) : Array.isArray(id) ? parseInt(id[0], 10) : 0;
     
     if (producerId) {
-      // TODO: Remplacer par un appel d'API réel
-      const data = getProducerById(producerId);
-      setProducer(data);
+      const fetchProducerDetails = async () => {
+        try {
+          const populateQuery = [
+            'populate[seller][populate][addressPickUp]=*',
+            'populate[seller][populate][sellerPhoto]=*', // Pour l'image de profil ronde
+            'populate[seller][populate][products][populate][gallery]=*',
+            // TODO: Ajouter une population pour une image de couverture si elle existe sur User ou Seller
+            // 'populate[userPhoto]=*' // Si l'image de profil vient directement de l'user
+          ].join('&');
+          
+          const response = await fetch(`http://localhost:1337/api/users/${producerId}?${populateQuery}`);
+          
+          if (!response.ok) {
+            console.error('Erreur HTTP:', response.status);
+            const errText = await response.text();
+            console.error("Texte de l'erreur API:", errText);
+            setProducer(null);
+            return;
+          }
+          const data: ApiProducerData = await response.json();
+
+          if (data) { // data est l'objet User
+            const sellerProfile = data.seller;
+            console.log("User data:", JSON.stringify(data, null, 2));
+            console.log("Seller Profile:", JSON.stringify(sellerProfile, null, 2));
+
+            const addressData = sellerProfile?.addressPickUp;
+            
+            let profileImage: string | number = require('@/assets/images/icon.png'); // Placeholder pour l'image de profil ronde
+            // Priorité à sellerPhoto, puis userPhoto si défini dans le schéma User et peuplé
+            const sellerPhotoField = sellerProfile?.sellerPhoto;
+            if (sellerPhotoField?.data) {
+              const photoData = Array.isArray(sellerPhotoField.data) ? sellerPhotoField.data[0] : sellerPhotoField.data;
+              if (photoData?.attributes?.url) {
+                profileImage = `http://localhost:1337${photoData.attributes.url}`;
+              }
+            } else if ((data as any).userPhoto?.data?.attributes?.url) { // Supposant que userPhoto est sur data
+                 profileImage = `http://localhost:1337${(data as any).userPhoto.data.attributes.url}`;
+            }
+            
+            // Placeholder pour l'image de couverture
+            const coverImagePlaceholder: string | number = require('@/assets/images/splash-icon.png');
+
+            let productsSource = sellerProfile?.products;
+            if (productsSource && (productsSource as any).data) {
+                productsSource = (productsSource as any).data;
+            }
+
+            const formattedProducts: Product[] = Array.isArray(productsSource) ? productsSource.map((p: any) => {
+                let productImage: string | number = require('@/assets/images/icon.png');
+                if (p.gallery && Array.isArray(p.gallery) && p.gallery.length > 0 && p.gallery[0]?.url) {
+                    productImage = `http://localhost:1337${p.gallery[0].url}`;
+                }
+                return {
+                    id: p.id,
+                    name: p.title || "Nom de produit inconnu",
+                    price: p.price ? `${Number(p.price).toFixed(2).replace('.', ',')} €/kg` : 'Prix non spécifié', 
+                    image: productImage,
+                };
+            }) : [];
+            
+            let categoriesFormatted: string[] = [];
+            if (sellerProfile?.categories) {
+              if (typeof sellerProfile.categories[0] === 'string') {
+                categoriesFormatted = sellerProfile.categories as string[];
+              } else if (Array.isArray(sellerProfile.categories) && sellerProfile.categories.length > 0 && typeof sellerProfile.categories[0] === 'object' && sellerProfile.categories[0] !== null && 'name' in sellerProfile.categories[0]) {
+                categoriesFormatted = (sellerProfile.categories as { name: string }[]).map(c => c.name);
+              }
+            } else {
+              // Catégories par défaut si non fournies par l'API, basées sur l'image
+              categoriesFormatted = ["Fruits", "Légumes", "Oeufs"];
+            }
+
+
+            setProducer({
+              id: data.id,
+              name: sellerProfile?.companyName || data.username || 'Nom du Producteur',
+              description: sellerProfile?.description || '', // Description courte du vendeur
+              latitude: addressData?.latitude || 0,
+              longitude: addressData?.longitude || 0,
+              categories: categoriesFormatted, 
+              distance: 2.7, // Placeholder
+              image: profileImage,
+              coverImage: coverImagePlaceholder, // Utiliser le placeholder
+              bio: data.description || sellerProfile?.bio || "Je suis un agriculteur passionné...", // Bio détaillée
+              products: formattedProducts,
+              address: formatAddress(addressData),
+              phone: data.phone || sellerProfile?.phone || '01 02 03 04 05',
+              email: data.email || 'contact@la-ferme-locale.org',
+              hours: sellerProfile?.openingHours || 'Non renseigné', // Placeholder pour les heures
+              website: sellerProfile?.website || 'Non renseigné', // Placeholder pour le site
+            });
+          } else {
+            console.error('Données utilisateur non trouvées ou profil vendeur manquant.');
+            setProducer(null);
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération des détails du producteur:", error);
+          setProducer(null);
+        }
+      };
+      fetchProducerDetails();
     }
   }, [id]);
 
   if (!producer) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Chargement...</Text>
-      </View>
-    );
+    return <View style={styles.loadingContainer}><Text>Chargement...</Text></View>;
   }
 
+  // Filtrer les produits basé sur la recherche et la catégorie sélectionnée
+  const filteredProducts = producer.products.filter(product => {
+    const matchesSearchQuery = product.name.toLowerCase().includes(productSearchQuery.toLowerCase());
+    const matchesCategory = selectedProductCategory ? producer.categories.includes(selectedProductCategory) /* Correction ici, vérifier si la catégorie DU PRODUIT correspond */ : true; // Doit être basé sur product.category
+    return matchesSearchQuery && matchesCategory;
+  });
+
+
   return (
-    <ScrollView style={styles.container}>
-      {/* En-tête avec image et bouton retour */}
-      <View style={styles.header}>
-        <Image source={producer.image} style={styles.headerImage} />
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
-        >
-          <FontAwesome name="arrow-left" size={24} color="#000" />
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header Section */}
+      <View style={styles.headerContainer}>
+        <Image source={producer.coverImage as any} style={styles.coverImage} />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <FontAwesome name="arrow-left" size={20} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.favoriteButton}>
-          <FontAwesome name="heart-o" size={24} color="#000" />
-          {/* TODO: Implémenter la fonctionnalité de favoris (ajout/suppression) */}
+        <TouchableOpacity style={styles.shareIcon}>
+          <FontAwesome name="share-alt" size={20} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton}>
-          <FontAwesome name="share" size={24} color="#000" />
-          {/* TODO: Implémenter la fonctionnalité de partage */}
-        </TouchableOpacity>
+        <View style={styles.profileImageContainer}>
+          <Image source={producer.image as any} style={styles.profileImage} />
+        </View>
       </View>
 
-      {/* Information du producteur */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.producerName}>{producer.name}</Text>
-        <View style={styles.locationContainer}>
-          <FontAwesome name="map-marker" size={16} color="#e74c3c" />
-          <Text style={styles.locationText}> à {producer.distance} km</Text>
-          {/* TODO: Calculer dynamiquement la distance en fonction de la position de l'utilisateur */}
+      {/* Producer Info Section */}
+      <View style={styles.producerInfoContainer}>
+        <Text style={styles.producerNameText}>{producer.name}</Text>
+        <View style={styles.contactIconsContainer}>
+            <TouchableOpacity style={styles.socialIcon}>
+                <FontAwesome name="facebook-square" size={28} color="#3b5998" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.socialIcon}>
+                <FontAwesome name="heart-o" size={28} color="#e4405f" />
+            </TouchableOpacity>
         </View>
+        
+        <View style={styles.contactDetailItem}>
+          <FontAwesome name="map-marker" size={18} color="#666" style={styles.contactIcon} />
+          <Text style={styles.contactText}>{producer.address} (à {producer.distance} km)</Text>
+        </View>
+        <View style={styles.contactDetailItem}>
+          <FontAwesome name="phone" size={18} color="#666" style={styles.contactIcon} />
+          <Text style={styles.contactText}>{producer.phone}</Text>
+        </View>
+        <View style={styles.contactDetailItem}>
+          <FontAwesome name="envelope" size={18} color="#666" style={styles.contactIcon} />
+          <Text style={styles.contactText}>{producer.email}</Text>
+        </View>
+        
+        <Text style={styles.bioText}>{producer.bio}</Text>
+      </View>
 
-        <View style={styles.categoriesContainer}>
-          {producer.categories.map((category, index) => (
-            <View key={index} style={styles.categoryTag}>
-              <Text style={styles.categoryText}>{category}</Text>
-            </View>
+      {/* Products Section */}
+      <View style={styles.productsSectionContainer}>
+        <Text style={styles.sectionTitle}>Nos produits</Text>
+        <View style={styles.productSearchContainer}>
+          <FontAwesome name="search" size={18} color="#aaa" style={styles.searchIcon} />
+          <TextInput
+            style={styles.productSearchInput}
+            placeholder="ex: pommes, carottes..."
+            value={productSearchQuery}
+            onChangeText={setProductSearchQuery}
+            placeholderTextColor="#aaa"
+          />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+          {/* Utiliser les catégories du producteur ou des catégories statiques */}
+          {producer.categories.map(category => (
+            <TouchableOpacity 
+              key={category} 
+              style={[styles.categoryChip, selectedProductCategory === category && styles.categoryChipActive]}
+              onPress={() => setSelectedProductCategory(selectedProductCategory === category ? null : category)}
+            >
+              <Text style={[styles.categoryChipText, selectedProductCategory === category && styles.categoryChipTextActive]}>{category}</Text>
+            </TouchableOpacity>
           ))}
-        </View>
-        {/* TODO: Ajouter un système de notation avec étoiles */}
-      </View>
+        </ScrollView>
 
-      {/* Onglets de navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'products' && styles.activeTab]} 
-          onPress={() => setActiveTab('products')}
-        >
-          <Text style={[styles.tabText, activeTab === 'products' && styles.activeTabText]}>Produits</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'bio' && styles.activeTab]} 
-          onPress={() => setActiveTab('bio')}
-        >
-          <Text style={[styles.tabText, activeTab === 'bio' && styles.activeTabText]}>À propos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'location' && styles.activeTab]} 
-          onPress={() => setActiveTab('location')}
-        >
-          <Text style={[styles.tabText, activeTab === 'location' && styles.activeTabText]}>Contact</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Contenu des onglets */}
-      <View style={styles.tabContent}>
-        {/* Produits */}
-        {activeTab === 'products' && (
-          <View style={styles.productsList}>
-            {/* TODO: Ajouter filtrage et tri des produits */}
-            {/* TODO: Implémenter la pagination pour les listes longues */}
-            {producer.products.map((product) => (
-              <View key={product.id} style={styles.productCard}>
-                <Image source={product.image} style={styles.productImage} />
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
-                  <Text style={styles.productPrice}>{product.price}</Text>
-                </View>
-                {/* TODO: Ajouter un bouton pour ajouter au panier */}
-                <TouchableOpacity style={styles.addToCartButton}>
-                  <FontAwesome name="plus" size={18} color="#e67e22" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Biographie */}
-        {activeTab === 'bio' && (
-          <View style={styles.bioContainer}>
-            <Text style={styles.bioText}>{producer.bio}</Text>
-            <View style={styles.photographContainer}>
-              <Image source={producer.image} style={styles.bioPicture} />
-              {/* TODO: Ajouter une galerie d'images du producteur et de la ferme */}
-              {/* TODO: Ajouter vidéo de présentation si disponible */}
+        {filteredProducts.map(product => (
+          <View key={product.id} style={styles.productCard}>
+            <Image source={product.image as any} style={styles.productItemImage} />
+            <View style={styles.productDetails}>
+              <Text style={styles.productItemName}>{product.name}</Text>
+              <Text style={styles.productItemPrice}>{product.price}</Text>
+              {/* TODO: Ajouter le tag de catégorie du produit ici si disponible */}
             </View>
-          </View>
-        )}
-
-        {/* Localisation et contact */}
-        {activeTab === 'location' && (
-          <View style={styles.locationSection}>
-            <View style={styles.contactInfoContainer}>
-              <View style={styles.contactItem}>
-                <FontAwesome name="map-marker" size={20} color="#e67e22" />
-                <Text style={styles.contactText}>{producer.address}</Text>
+            <View style={styles.productActions}>
+              <View style={styles.quantitySelector}>
+                <Text>0 g</Text> {/* Placeholder */}
+                <FontAwesome name="chevron-down" size={16} color="#888" />
               </View>
-              
-              <TouchableOpacity 
-                style={styles.contactItem}
-                onPress={() => Linking.openURL(`tel:${producer.phone}`)}
-              >
-                <FontAwesome name="phone" size={20} color="#e67e22" />
-                <Text style={styles.contactText}>{producer.phone}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.contactItem}
-                onPress={() => Linking.openURL(`mailto:${producer.email}`)}
-              >
-                <FontAwesome name="envelope" size={20} color="#e67e22" />
-                <Text style={styles.contactText}>{producer.email}</Text>
-              </TouchableOpacity>
-              
-              <View style={styles.contactItem}>
-                <FontAwesome name="clock-o" size={20} color="#e67e22" />
-                <Text style={styles.contactText}>{producer.hours}</Text>
-              </View>
-              
-              {producer.website && (
-                <TouchableOpacity 
-                  style={styles.contactItem}
-                  onPress={() => Linking.openURL(producer.website)}
-                >
-                  <FontAwesome name="globe" size={20} color="#e67e22" />
-                  <Text style={styles.contactText}>{producer.website}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {/* Mini map */}
-            <View style={styles.mapContainer}>
-              <RNMapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: producer.latitude,
-                  longitude: producer.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-                scrollEnabled={false}
-                // TODO: Améliorer la carte avec plus d'informations (points d'intérêt proches, etc.)
-              >
-                <Marker
-                  coordinate={{
-                    latitude: producer.latitude,
-                    longitude: producer.longitude
-                  }}
-                  title={producer.name}
-                  pinColor="#e67e22"
-                />
-              </RNMapView>
-              {/* TODO: Ajouter un bouton pour obtenir l'itinéraire */}
-              <TouchableOpacity 
-                style={styles.directionsButton}
-                onPress={() => {
-                  const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
-                  const url = `${scheme}${producer.latitude},${producer.longitude}`;
-                  Linking.openURL(url);
-                }}
-              >
-                <Text style={styles.directionsButtonText}>Itinéraire</Text>
-                <FontAwesome name="location-arrow" size={16} color="#fff" style={styles.directionsIcon} />
+              <TouchableOpacity style={styles.addToCartButtonProd}>
+                <Text style={styles.addToCartButtonTextProd}>Ajouter au panier</Text>
               </TouchableOpacity>
             </View>
-            {/* TODO: Ajouter un formulaire de contact direct au producteur */}
           </View>
-        )}
+        ))}
+        {filteredProducts.length === 0 && <Text style={styles.noProductsText}>Aucun produit ne correspond à votre recherche.</Text>}
       </View>
-
-      {/* Bouton flottant "Ajouter au panier" */}
-      {activeTab === 'products' && (
-        <TouchableOpacity style={styles.floatingCartButton}>
-          <FontAwesome name="shopping-cart" size={20} color="#fff" />
-          <Text style={styles.floatingCartButtonText}>Ajouter au panier</Text>
-        </TouchableOpacity>
-      )}
     </ScrollView>
   );
 }
@@ -293,245 +337,213 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  // Header
+  headerContainer: {
     position: 'relative',
-    height: 250,
   },
-  headerImage: {
+  coverImage: {
     width: '100%',
-    height: '100%',
+    height: 200, // Ajuster selon le design
     resizeMode: 'cover',
   },
-  backButton: {
+  backButton: { // Ajusté pour être sur l'image de couverture
     position: 'absolute',
-    top: 50,
-    left: 20,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
+    top: Platform.OS === 'ios' ? 40 : 20, // Marge pour la barre de statut
+    left: 15,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: 8,
+    borderRadius: 20,
+  },
+  shareIcon: { // Ajusté pour être sur l'image de couverture
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 40 : 20,
+    right: 15,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: 8,
+    borderRadius: 20,
+  },
+  profileImageContainer: {
+    position: 'absolute',
+    bottom: -50, // Pour superposer sur la section info
+    left: '50%',
+    marginLeft: -50, // Moitié de la largeur de l'image
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    elevation: 5, // Android shadow
+    shadowColor: '#000', // iOS shadow
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+
   },
-  favoriteButton: {
-    position: 'absolute',
-    top: 50,
-    right: 70,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+  profileImage: {
+    width: '100%',
+    height: '100%',
   },
-  shareButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+
+  // Producer Info
+  producerInfoContainer: {
+    marginTop: 60, // Espace pour l'image de profil superposée
+    paddingHorizontal: 20,
+    alignItems: 'center', // Centrer le nom
   },
-  infoContainer: {
-    padding: 20,
-  },
-  producerName: {
+  producerNameText: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 5,
+    textAlign: 'center',
+    marginBottom: 10,
   },
-  locationContainer: {
+  contactIconsContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
   },
-  locationText: {
-    fontSize: 14,
-    color: '#666',
+  socialIcon: {
+    marginHorizontal: 10,
   },
-  categoriesContainer: {
+  contactDetailItem: {
     flexDirection: 'row',
-    marginTop: 10,
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start', // Aligner à gauche dans le conteneur centré
   },
-  categoryTag: {
-    backgroundColor: '#f5f5f5',
+  contactIcon: {
+    marginRight: 10,
+  },
+  contactText: {
+    fontSize: 15,
+    color: '#333',
+  },
+  bioText: {
+    fontSize: 15,
+    color: '#555',
+    textAlign: 'left', // Justifié ou à gauche selon le design
+    lineHeight: 22,
+    marginTop: 15,
+    marginBottom: 20,
+  },
+
+  // Products Section
+  productsSectionContainer: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  productSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0', // Couleur de fond de la barre de recherche
+    borderRadius: 25,
     paddingHorizontal: 15,
-    paddingVertical: 5,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    marginBottom: 15,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  productSearchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  categoriesScroll: {
+    marginBottom: 20,
+  },
+  categoryChip: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
     borderRadius: 20,
     marginRight: 10,
   },
-  categoryText: {
+  categoryChipActive: {
+    backgroundColor: '#e67e22', // Couleur pour la catégorie active
+  },
+  categoryChipText: {
     fontSize: 14,
     color: '#333',
   },
-  tabContainer: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingHorizontal: 20,
-    marginTop: 5,
-  },
-  tab: {
-    paddingVertical: 15,
-    marginRight: 30,
-    position: 'relative',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#e67e22',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#999',
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: '#e67e22',
+  categoryChipTextActive: {
+    color: '#fff',
     fontWeight: 'bold',
-  },
-  tabContent: {
-    padding: 20,
-  },
-  productsList: {
-    marginTop: 10,
   },
   productCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 10,
-    marginBottom: 15,
     padding: 10,
-    elevation: 2,
+    marginBottom: 15,
+    // Ombre subtile pour les cartes
+    elevation: 2, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: '#eee'
   },
-  productImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
+  productItemImage: {
+    width: 100, // Taille ajustée
+    height: 100,
+    borderRadius: 8,
     marginRight: 15,
-    backgroundColor: '#f9f9f9',
   },
-  productInfo: {
+  productDetails: {
     flex: 1,
+    justifyContent: 'center',
   },
-  productName: {
+  productItemName: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
   },
-  productPrice: {
+  productItemPrice: {
     fontSize: 15,
-    color: '#e67e22',
+    color: '#e67e22', // Couleur du prix
+    marginBottom: 8,
   },
-  addToCartButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e67e22',
-    borderRadius: 20,
-    width: 35,
-    height: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
+  productActions: {
+    alignItems: 'flex-end', // Aligner les actions à droite
+    justifyContent: 'space-between', // Espacer quantité et bouton
   },
-  bioContainer: {
-    marginTop: 10,
-  },
-  bioText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#555',
-    marginBottom: 20,
-  },
-  photographContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  bioPicture: {
-    width: '100%',
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  locationSection: {
-    marginTop: 10,
-  },
-  contactInfoContainer: {
-    marginBottom: 20,
-  },
-  contactItem: {
+  quantitySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    marginBottom: 10, // Espace avant le bouton ajouter
   },
-  contactText: {
-    marginLeft: 15,
-    fontSize: 16,
-    color: '#555',
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginTop: 20,
-    position: 'relative',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  directionsButton: {
-    position: 'absolute',
-    bottom: 15,
-    right: 15,
+  addToCartButtonProd: {
     backgroundColor: '#e67e22',
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 20,
   },
-  directionsButtonText: {
+  addToCartButtonTextProd: {
     color: '#fff',
     fontWeight: 'bold',
-    marginRight: 5,
+    fontSize: 14,
   },
-  directionsIcon: {
-    marginLeft: 5,
+  noProductsText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    marginBottom: 20,
   },
-  floatingCartButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#e67e22',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-  },
-  floatingCartButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    marginLeft: 10,
-  },
+  // Styles pour les anciens onglets (peuvent être supprimés ou réutilisés si besoin)
+  tabContainer: {}, // Vide pour l'instant
+  tabContent: {}, // Vide pour l'instant
+  // ... (autres styles existants qui pourraient être supprimés si non utilisés)
 }); 
