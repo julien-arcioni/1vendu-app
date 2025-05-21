@@ -8,6 +8,8 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useAuthentication } from '@/hooks/useAuthentication';
 import { Image } from 'react-native';
+import CommandeIcon from '@/assets/icon/commande-icon.svg';
+import ProductIcon from '@/assets/icon/product-icon.svg';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -19,7 +21,8 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, isLoading } = useAuthentication();
+  const { isAuthenticated, isLoading, user } = useAuthentication();
+  const isSeller = user?.isSeller;
 
   useEffect(() => {
     // Ce hook va automatiquement vérifier l'authentification au démarrage
@@ -53,46 +56,92 @@ export default function TabLayout() {
           tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
         })}
         />
-        <Tabs.Screen
-        name="favorites" 
-        options={({ navigation }) => ({
-          title: 'Favoris',
-          tabBarIcon: ({ focused }) => (
-            <Image 
-              source={focused ? require('@/assets/icon/icon-favoris-active.png') : require('@/assets/icon/icon-favoris.png')}
-              style={{ 
-                width: 28, 
-                height: 28,
-                opacity: focused ? 1 : 0.8,
-                transform: [{ scale: focused ? 1.1 : 1 }]
-              }}
-            />
-          ),
-          headerShown: false,
-          tabBarActiveTintColor: Colors.secondary,
-          tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
-        })}
-        />
-        <Tabs.Screen
-        name="cart"
-        options={({ navigation }) => ({
-          title: 'Panier',
-          tabBarIcon: ({ focused }) => (
-            <Image 
-              source={focused ? require('@/assets/icon/icon-panier-active.png') : require('@/assets/icon/icon-panier.png')}
-              style={{ 
-                width: 28, 
-                height: 28,
-                opacity: focused ? 1 : 0.8,
-                transform: [{ scale: focused ? 1.1 : 1 }]
-              }}
-            />
-          ),
-          headerShown: false,
-          tabBarActiveTintColor: Colors.secondary,
-          tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
-        })}
-        />
+        {isSeller ? (
+          <Tabs.Screen
+            name="orders"
+            options={({ navigation }) => ({
+              title: 'Commandes',
+              tabBarIcon: ({ focused }) => (
+                <CommandeIcon
+                  width={28}
+                  height={28}
+                  fill={focused ? Colors.secondary : '#888'}
+                  style={{
+                    opacity: focused ? 1 : 0.8,
+                    transform: [{ scale: focused ? 1.1 : 1 }],
+                  }}
+                />
+              ),
+              headerShown: false,
+              tabBarActiveTintColor: Colors.secondary,
+              tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+            })}
+          />
+        ) : (
+          <Tabs.Screen
+            name="favorites"
+            options={({ navigation }) => ({
+              title: 'Favoris',
+              tabBarIcon: ({ focused }) => (
+                <Image
+                  source={focused ? require('@/assets/icon/icon-favoris-active.png') : require('@/assets/icon/icon-favoris.png')}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    opacity: focused ? 1 : 0.8,
+                    transform: [{ scale: focused ? 1.1 : 1 }]
+                  }}
+                />
+              ),
+              headerShown: false,
+              tabBarActiveTintColor: Colors.secondary,
+              tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+            })}
+          />
+        )}
+        {isSeller ? (
+          <Tabs.Screen
+            name="myProducts"
+            options={({ navigation }) => ({
+              title: 'Mes produits',
+              tabBarIcon: ({ focused }) => (
+                <ProductIcon
+                  width={28}
+                  height={28}
+                  fill={focused ? Colors.secondary : '#888'}
+                  style={{
+                    opacity: focused ? 1 : 0.8,
+                    transform: [{ scale: focused ? 1.1 : 1 }],
+                  }}
+                />
+              ),
+              headerShown: false,
+              tabBarActiveTintColor: Colors.secondary,
+              tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+            })}
+          />
+        ) : (
+          <Tabs.Screen
+            name="cart"
+            options={({ navigation }) => ({
+              title: 'Panier',
+              tabBarIcon: ({ focused }) => (
+                <Image
+                  source={focused ? require('@/assets/icon/icon-panier-active.png') : require('@/assets/icon/icon-panier.png')}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    opacity: focused ? 1 : 0.8,
+                    transform: [{ scale: focused ? 1.1 : 1 }]
+                  }}
+                />
+              ),
+              headerShown: false,
+              tabBarActiveTintColor: Colors.secondary,
+              tabBarItemStyle: navigation.isFocused() ? { borderTopWidth: 2, borderTopColor: Colors.secondary } : {},
+            })}
+          />
+        )}
         <Tabs.Screen
         name="profile"
         options={({ navigation }) => ({
@@ -123,6 +172,32 @@ export default function TabLayout() {
           href: null
         }}
         />
+
+        {isSeller ? (
+          <Tabs.Screen
+            name="cart"
+            options={{
+              title: 'Panier',
+              headerShown: false,
+              tabBarStyle: { display: "none"},
+              tabBarIcon: undefined,
+              href: null
+            }}
+          />
+        ) : null}
+
+{isSeller ? (
+          <Tabs.Screen
+            name="favorites"
+            options={{
+              title: 'Favoris',
+              headerShown: false,
+              tabBarStyle: { display: "none"},
+              tabBarIcon: undefined,
+              href: null
+            }}
+          />
+        ) : null}
       </Tabs>
       );
 }
