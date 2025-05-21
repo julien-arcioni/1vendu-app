@@ -137,8 +137,8 @@ export default function ProducerDetailScreen() {
 
           if (data) { // data est l'objet User
             const sellerProfile = data.seller;
-            console.log("User data:", JSON.stringify(data, null, 2));
-            console.log("Seller Profile:", JSON.stringify(sellerProfile, null, 2));
+            //console.log("User data:", JSON.stringify(data, null, 2));
+            //console.log("Seller Profile:", JSON.stringify(sellerProfile, null, 2));
 
             const addressData = sellerProfile?.addressPickUp;
             
