@@ -410,38 +410,33 @@ export default function ProducerDetailScreen() {
 
         {filteredProducts.map(product => (
           <View key={product.id} style={styles.productCard}>
-            <Image 
-              source={typeof product.image === 'string' ? { uri: product.image } : product.image} 
-              style={styles.productItemImage} 
+            <Image
+              source={typeof product.image === 'string' ? { uri: product.image } : product.image}
+              style={styles.productItemImage}
             />
             <View style={styles.productDetails}>
-              <Text style={styles.productItemName}>{product.name}</Text>
+              {/* En-tête : nom + icône favori */}
+              <View style={styles.productHeaderRow}>
+                <Text style={styles.productItemName}>{product.name}</Text>
+                <TouchableOpacity
+                  style={styles.favoriteButton}
+                  onPress={() => handleToggleFavorite(product.id)}
+                >
+                  <FontAwesome
+                    name={isFavorite(product.id) ? 'heart' : 'heart-o'}
+                    size={22}
+                    color={isFavorite(product.id) ? '#e4405f' : '#666'}
+                  />
+                </TouchableOpacity>
+              </View>
+
               <Text style={styles.productItemPrice}>{product.price}</Text>
-            </View>
-            <View style={styles.productActions}>
-              {/* Bouton favoris */}
-              <TouchableOpacity 
-                style={styles.favoriteButton}
-                onPress={() => handleToggleFavorite(product.id)}
-              >
-                <FontAwesome 
-                  name={isFavorite(product.id) ? "heart" : "heart-o"} 
-                  size={24} 
-                  color={isFavorite(product.id) ? "#e4405f" : "#666"} 
-                />
-              </TouchableOpacity>
-              
-              {/* Bouton ajouter au panier */}
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.addToCartButtonProd, isInCart(product.id) && styles.addToCartButtonActive]}
                 onPress={() => handleAddToCart(product.id)}
               >
-                <FontAwesome 
-                  name="shopping-cart" 
-                  size={16} 
-                  color="#fff" 
-                  style={styles.cartIcon}
-                />
+                <FontAwesome name="shopping-cart" size={16} color="#fff" style={styles.cartIcon} />
                 <Text style={styles.addToCartButtonTextProd}>
                   {isInCart(product.id) ? 'Dans le panier' : 'Ajouter au panier'}
                 </Text>
@@ -617,7 +612,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     borderWidth: 1,
-    borderColor: '#eee'
+    borderColor: '#eee',
+    minHeight: 120,
+    alignItems: 'stretch',
   },
   productItemImage: {
     width: 100,
@@ -627,36 +624,40 @@ const styles = StyleSheet.create({
   },
   productDetails: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingRight: 10,
+  },
+  productHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
   },
   productItemName: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
+    flexWrap: 'wrap',
+    textAlign: 'left',
+    flex: 1,
   },
   productItemPrice: {
     fontSize: 15,
     color: '#e67e22',
     marginBottom: 8,
   },
-  productActions: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
   favoriteButton: {
-    padding: 10,
-    marginBottom: 10,
+    padding: 6,
+    marginLeft: 8,
   },
   addToCartButtonProd: {
     backgroundColor: '#e67e22',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 25,
     flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 140,
     justifyContent: 'center',
+    flexShrink: 1,
   },
   addToCartButtonActive: {
     backgroundColor: '#27ae60',

@@ -186,7 +186,7 @@ export default function HomeScreen() {
 
       {/* Modal de détail rapide du producteur */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
