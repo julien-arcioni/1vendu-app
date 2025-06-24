@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Linking, Platform, TextInput, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Linking, Platform, TextInput, Dimensions, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Imports spécifiques à iOS
 import RNMapView, { Marker } from 'react-native-maps';
@@ -110,6 +113,11 @@ export default function ProducerDetailScreen() {
   const [productCategoriesForFilter, setProductCategoriesForFilter] = useState<string[]>([]);
   const [activeCoverSlideIndex, setActiveCoverSlideIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Hooks pour favoris et panier
+  const { isAuthenticated } = useAuth();
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const { addItemToCart, isInCart, getCartItemQuantity } = useCart();
   
   useEffect(() => {
     const producerId = typeof id === 'string' ? parseInt(id, 10) : Array.isArray(id) ? parseInt(id[0], 10) : 0;
@@ -240,6 +248,39 @@ export default function ProducerDetailScreen() {
       fetchProducerDetails();
     }
   }, [id]);
+
+  // Fonction pour gérer les favoris
+  const handleToggleFavorite = async (productId: number) => {
+    if (!isAuthenticated) {
+      Alert.alert('Connexion requise', 'Vous devez être connecté pour ajouter des favoris.');
+      return;
+    }
+
+    try {
+      const isNowFavorite = await toggleFavorite(productId);
+      Alert.alert(
+        'Favoris', 
+        isNowFavorite ? 'Produit ajouté aux favoris' : 'Produit retiré des favoris'
+      );
+    } catch (error) {
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la gestion des favoris.');
+    }
+  };
+
+  // Fonction pour gérer l'ajout au panier
+  const handleAddToCart = async (productId: number) => {
+    if (!isAuthenticated) {
+      Alert.alert('Connexion requise', 'Vous devez être connecté pour ajouter des produits au panier.');
+      return;
+    }
+
+    try {
+      await addItemToCart(productId, 1);
+      Alert.alert('Panier', 'Produit ajouté au panier avec succès !');
+    } catch (error) {
+      Alert.alert('Erreur', 'Une erreur est survenue lors de l\'ajout au panier.');
+    }
+  };
 
   if (!producer) {
     return <View style={styles.loadingContainer}><Text>Chargement...</Text></View>;
@@ -376,15 +417,34 @@ export default function ProducerDetailScreen() {
             <View style={styles.productDetails}>
               <Text style={styles.productItemName}>{product.name}</Text>
               <Text style={styles.productItemPrice}>{product.price}</Text>
-              {/* TODO: Ajouter le tag de catégorie du produit ici si disponible */}
             </View>
             <View style={styles.productActions}>
-              <View style={styles.quantitySelector}>
-                <Text>0 g</Text>
-                <FontAwesome name="chevron-down" size={16} color="#888" />
-              </View>
-              <TouchableOpacity style={styles.addToCartButtonProd}>
-                <Text style={styles.addToCartButtonTextProd}>Ajouter au panier</Text>
+              {/* Bouton favoris */}
+              <TouchableOpacity 
+                style={styles.favoriteButton}
+                onPress={() => handleToggleFavorite(product.id)}
+              >
+                <FontAwesome 
+                  name={isFavorite(product.id) ? "heart" : "heart-o"} 
+                  size={24} 
+                  color={isFavorite(product.id) ? "#e4405f" : "#666"} 
+                />
+              </TouchableOpacity>
+              
+              {/* Bouton ajouter au panier */}
+              <TouchableOpacity 
+                style={[styles.addToCartButtonProd, isInCart(product.id) && styles.addToCartButtonActive]}
+                onPress={() => handleAddToCart(product.id)}
+              >
+                <FontAwesome 
+                  name="shopping-cart" 
+                  size={16} 
+                  color="#fff" 
+                  style={styles.cartIcon}
+                />
+                <Text style={styles.addToCartButtonTextProd}>
+                  {isInCart(product.id) ? 'Dans le panier' : 'Ajouter au panier'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -582,26 +642,32 @@ const styles = StyleSheet.create({
   productActions: {
     alignItems: 'flex-end',
     justifyContent: 'space-between',
+    paddingVertical: 10,
   },
-  quantitySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
+  favoriteButton: {
+    padding: 10,
     marginBottom: 10,
   },
   addToCartButtonProd: {
     backgroundColor: '#e67e22',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 140,
+    justifyContent: 'center',
+  },
+  addToCartButtonActive: {
+    backgroundColor: '#27ae60',
   },
   addToCartButtonTextProd: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  cartIcon: {
+    marginRight: 8,
   },
   noProductsText: {
     textAlign: 'center',

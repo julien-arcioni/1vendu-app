@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { loginUser } from '@/api/user';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoadingScreen from '@/components/LoadingScreen';
 
 // Votre composant CustomInput
 import CustomInput from '@/components/input/CustomInput';
@@ -22,14 +24,13 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { isAuthenticated, loadUser } = useAuth();
-
-  // Rediriger si déjà authentifié
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/(tabs)/home');
-    }
-  }, [isAuthenticated]);
+  const { loadUser } = useAuth();
+  
+  // Protéger cette route - rediriger si déjà connecté
+  const { canAccess, isLoading: authLoading } = useAuthGuard({
+    redirectIfAuthenticated: true,
+    redirectAuthenticatedTo: '/(tabs)/home'
+  });
 
   const handleLogin = async () => {
     try {
@@ -45,7 +46,8 @@ export default function LoginScreen() {
       // Recharger l'utilisateur depuis le contexte après la connexion
       await loadUser();
       
-      router.replace('/(tabs)/home');
+      // Rediriger vers l'accueil après une connexion réussie
+      router.replace('/');
     } catch (err: any) {
       console.error('Erreur de connexion:', err);
       if (err.response?.data?.error?.message === 'Invalid identifier or password') {
@@ -59,6 +61,11 @@ export default function LoginScreen() {
       setIsLoading(false);
     }
   };
+
+  // Afficher l'écran de chargement pendant la vérification d'authentification
+  if (authLoading || !canAccess) {
+    return <LoadingScreen />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>

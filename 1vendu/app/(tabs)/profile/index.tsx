@@ -1,244 +1,277 @@
-import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView } from 'react-native';
-import Header from '@/components/navigation/Header';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import React, { useState } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  SafeAreaView, 
+  TouchableOpacity, 
+  ScrollView,
+  Alert 
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { deleteUserAccount } from '@/api/user';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import LoadingScreen from '@/components/LoadingScreen';
 import Colors from '@/constants/Colors';
 
-// Type pour les noms d'icônes FontAwesome utilisés
-type IconName = 'shopping-bag' | 'credit-card' | 'map-marker' | 'bell' | 'cog' | 
-  'question-circle' | 'sign-out' | 'toggle-on' | 'chevron-right';
+interface MenuOption {
+  id: string;
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+}
 
-const ProfileScreen = () => {
-  // Utilisateur fictif pour démonstration
-  const user = {
-    name: 'Sophie Martin',
-    email: 'sophie.martin@example.com',
-    phone: '06 12 34 56 78',
-    address: '123 Rue du Marché, 75001 Paris',
-    image: require('@/assets/images/brand/logo.png') // Placeholder, remplacer par une vraie photo
-  };
+export default function ProfileScreen() {
+  const { user, logout, isLoading } = useAuth();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Options du profil
-  type ProfileOption = {
-    id: string;
-    icon: IconName;
-    title: string;
-    badge?: string;
-    toggle?: boolean;
-  };
+  // Protéger cette route - rediriger si non connecté
+  const { canAccess, isLoading: authLoading } = useAuthGuard({
+    requireAuth: true,
+    redirectTo: '/'
+  });
 
-  const profileOptions: ProfileOption[] = [
-    { id: 'orders', icon: 'shopping-bag', title: 'Mes commandes', badge: '3' },
-    { id: 'payments', icon: 'credit-card', title: 'Moyens de paiement' },
-    { id: 'addresses', icon: 'map-marker', title: 'Adresses de livraison' },
-    { id: 'notifications', icon: 'bell', title: 'Notifications', toggle: true },
-    { id: 'settings', icon: 'cog', title: 'Paramètres' },
-    { id: 'help', icon: 'question-circle', title: 'Aide et support' },
+  // Options du menu principal
+  const menuOptions: MenuOption[] = [
+    {
+      id: 'personal-info',
+      title: 'Informations personnelles',
+      icon: 'person-outline',
+      onPress: () => {
+        // Pour l'instant, on affiche une alerte, plus tard on naviguera vers une vraie page
+        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+      }
+    },
+    {
+      id: 'payment-info',
+      title: 'Coordonnées bancaires',
+      icon: 'card-outline',
+      onPress: () => {
+        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+      }
+    },
+    {
+      id: 'expenses',
+      title: 'Dépenses',
+      icon: 'receipt-outline',
+      onPress: () => {
+        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+      }
+    },
+    {
+      id: 'contact',
+      title: 'Contact',
+      icon: 'mail-outline',
+      onPress: () => {
+        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+      }
+    }
   ];
 
-  // Statistiques utilisateur
-  const stats = [
-    { id: 'purchases', value: '12', label: 'Achats' },
-    { id: 'sellers', value: '5', label: 'Vendeurs' },
-    { id: 'reviews', value: '8', label: 'Avis' },
-  ];
+  const handleLogout = async () => {
+    Alert.alert(
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Déconnexion',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoggingOut(true);
+              await logout();
+            } catch (error) {
+              console.error('Erreur lors de la déconnexion:', error);
+              Alert.alert('Erreur', 'Une erreur est survenue lors de la déconnexion');
+            } finally {
+              setIsLoggingOut(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
-  const renderProfileOption = (option: ProfileOption) => (
-    <TouchableOpacity key={option.id} style={styles.optionItem}>
-      <View style={styles.optionIconContainer}>
-        <FontAwesome name={option.icon} size={18} color={Colors.primary || '#e67e22'} />
-      </View>
-      <Text style={styles.optionTitle}>{option.title}</Text>
-      <View style={styles.optionRight}>
-        {option.badge && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{option.badge}</Text>
-          </View>
-        )}
-        {option.toggle ? (
-          <FontAwesome name="toggle-on" size={24} color={Colors.primary || '#e67e22'} />
-        ) : (
-          <FontAwesome name="chevron-right" size={16} color="#999" />
-        )}
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      'Supprimer le compte',
+      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible.',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel'
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              await deleteUserAccount();
+              router.replace('/');
+            } catch (error) {
+              console.error('Erreur lors de la suppression du compte:', error);
+              Alert.alert(
+                'Erreur', 
+                'Une erreur est survenue lors de la suppression du compte. Veuillez réessayer.'
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderMenuItem = (option: MenuOption) => (
+    <TouchableOpacity 
+      key={option.id} 
+      style={styles.menuItem}
+      onPress={option.onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.menuItemContent}>
+        <Text style={styles.menuItemText}>{option.title}</Text>
+        <Ionicons name="chevron-forward" size={20} color="#666" />
       </View>
     </TouchableOpacity>
   );
 
+  // Afficher un spinner pendant le chargement
+  if (isLoading || authLoading || !canAccess || isDeleting || isLoggingOut) {
+    return <LoadingScreen />;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <Header showNotification={false} />
+      <ProfileHeader />
       
-      <ScrollView style={styles.scrollView}>
-        {/* Section profil */}
-        <View style={styles.profileSection}>
-          <Image source={user.image} style={styles.profileImage} />
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user.name}</Text>
-            <Text style={styles.profileEmail}>{user.email}</Text>
-            <TouchableOpacity style={styles.editButton}>
-              <Text style={styles.editButtonText}>Modifier le profil</Text>
-            </TouchableOpacity>
-          </View>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Menu principal */}
+        <View style={styles.menuContainer}>
+          {menuOptions.map(renderMenuItem)}
         </View>
 
-        {/* Statistiques utilisateur */}
-        <View style={styles.statsContainer}>
-          {stats.map(stat => (
-            <View key={stat.id} style={styles.statItem}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Espace vide pour pousser les boutons vers le bas */}
+        <View style={styles.spacer} />
 
-        {/* Options de profil */}
-        <View style={styles.optionsContainer}>
-          <Text style={styles.sectionTitle}>Mon compte</Text>
-          {profileOptions.map(renderProfileOption)}
-        </View>
+        {/* Boutons d'action */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.logoutButtonText}>Déconnexion</Text>
+          </TouchableOpacity>
 
-        {/* Bouton de déconnexion */}
-        <TouchableOpacity style={styles.logoutButton}>
-          <FontAwesome name="sign-out" size={18} color="#e74c3c" style={styles.logoutIcon} />
-          <Text style={styles.logoutText}>Déconnexion</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteButtonText}>Supprimer mon compte</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-      
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f8f9fa',
   },
   scrollView: {
     flex: 1,
   },
-  profileSection: {
-    flexDirection: 'row',
-    padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
+  menuContainer: {
+    backgroundColor: '#ffffff',
+    marginTop: 20,
+    marginHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#f0f0f0',
-  },
-  profileInfo: {
-    marginLeft: 20,
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  editButton: {
-    marginTop: 8,
-  },
-  editButtonText: {
-    fontSize: 14,
-    color: Colors.primary || '#e67e22',
-    fontWeight: '500',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 15,
-    marginTop: 10,
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.primary || '#e67e22',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  optionsContainer: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingVertical: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginVertical: 10,
-    paddingHorizontal: 15,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
+  menuItem: {
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  optionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f8f8f8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  optionTitle: {
-    flex: 1,
-    fontSize: 15,
-    color: '#333',
-  },
-  optionRight: {
+  menuItemContent: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
   },
-  badge: {
-    backgroundColor: Colors.primary || '#e67e22',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginRight: 10,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-    padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginHorizontal: 15,
-  },
-  logoutIcon: {
-    marginRight: 10,
-  },
-  logoutText: {
+  menuItemText: {
     fontSize: 16,
-    color: '#e74c3c',
+    color: '#333',
     fontWeight: '500',
   },
-});
-
-export default ProfileScreen; 
+  spacer: {
+    flex: 1,
+    minHeight: 100,
+  },
+  actionButtons: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+    gap: 15,
+  },
+  logoutButton: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    color: '#dc3545',
+    fontWeight: '600',
+  },
+}); 

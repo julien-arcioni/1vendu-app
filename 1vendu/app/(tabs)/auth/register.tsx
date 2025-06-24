@@ -14,6 +14,8 @@ import CustomButton from '@/components/button/CustomButton';
 import CustomInput from '@/components/input/CustomInput';
 import Colors from '@/constants/Colors';
 import { registerUser } from '@/api/user';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function RegisterScreen() {
   const [firstname, setFirstname] = useState('');
@@ -24,8 +26,14 @@ export default function RegisterScreen() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // ICI on gère l'état isSeller : j’achète => false, je vends => true
+  // ICI on gère l'état isSeller : j'achète => false, je vends => true
   const [isSeller, setIsSeller] = useState(false);
+
+  // Protéger cette route - rediriger si déjà connecté
+  const { canAccess, isLoading: authLoading } = useAuthGuard({
+    redirectIfAuthenticated: true,
+    redirectAuthenticatedTo: '/(tabs)/home'
+  });
 
   // Génération automatique d'un username unique
   const generateUsername = (firstname: string, lastname: string) => {
@@ -39,7 +47,7 @@ export default function RegisterScreen() {
     return `${normalizedFirstname.toLowerCase()}.${normalizedLastname.toLowerCase()}${random}`;
   };
 
-  // Simple validation avant l’inscription
+  // Simple validation avant l'inscription
   const validateForm = () => {
     if (!firstname || !lastname || !email || !password || !confirmPassword) {
       setError('Veuillez remplir tous les champs');
@@ -100,6 +108,11 @@ export default function RegisterScreen() {
     }
   };
 
+  // Afficher l'écran de chargement pendant la vérification d'authentification
+  if (authLoading || !canAccess) {
+    return <LoadingScreen />;
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.topContainer}>
@@ -125,7 +138,7 @@ export default function RegisterScreen() {
             <Text
               style={!isSeller ? styles.toggleTextActive : styles.toggleText}
             >
-              J’achète
+              J'achète
             </Text>
           </TouchableOpacity>
 
@@ -149,11 +162,13 @@ export default function RegisterScreen() {
           label="Prénom"
           placeholder="Entrez votre prénom"
           value={firstname}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setFirstname(text);
             setError('');
           }}
-          icon="person-outline"
+          style={{}}
+          labelStyle={{}}
+          inputStyle={{}}
           error={error && !firstname ? 'Ce champ est requis' : ''}
         />
 
@@ -161,11 +176,13 @@ export default function RegisterScreen() {
           label="Nom"
           placeholder="Entrez votre nom"
           value={lastname}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setLastname(text);
             setError('');
           }}
-          icon="person-outline"
+          style={{}}
+          labelStyle={{}}
+          inputStyle={{}}
           error={error && !lastname ? 'Ce champ est requis' : ''}
         />
 
@@ -173,13 +190,14 @@ export default function RegisterScreen() {
           label="Email"
           placeholder="Entrez votre email"
           value={email}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setEmail(text);
             setError('');
           }}
           keyboardType="email-address"
-          autoCapitalize="none"
-          icon="mail-outline"
+          style={{}}
+          labelStyle={{}}
+          inputStyle={{}}
           error={error && !email ? 'Ce champ est requis' : ''}
         />
 
@@ -187,12 +205,14 @@ export default function RegisterScreen() {
           label="Mot de passe"
           placeholder="Créez votre mot de passe"
           value={password}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setPassword(text);
             setError('');
           }}
           secureTextEntry
-          icon="lock-closed-outline"
+          style={{}}
+          labelStyle={{}}
+          inputStyle={{}}
           error={error && !password ? 'Ce champ est requis' : ''}
         />
 
@@ -200,12 +220,14 @@ export default function RegisterScreen() {
           label="Confirmation du mot de passe"
           placeholder="Confirmez votre mot de passe"
           value={confirmPassword}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setConfirmPassword(text);
             setError('');
           }}
           secureTextEntry
-          icon="lock-closed-outline"
+          style={{}}
+          labelStyle={{}}
+          inputStyle={{}}
           error={error}
         />
 

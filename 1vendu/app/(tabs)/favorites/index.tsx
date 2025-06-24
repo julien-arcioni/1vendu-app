@@ -1,72 +1,124 @@
-import React from 'react';
-import { StyleSheet, View, Text, FlatList, SafeAreaView, Image, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, View, Text, FlatList, SafeAreaView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import Header from '@/components/navigation/Header';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Colors from '@/constants/Colors';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Données fictives pour les favoris
-const favoritesData = [
-  {
-    id: '1',
-    title: 'Panier de légumes bio',
-    price: '15,99 €',
-    seller: 'Ferme des Oliviers',
-    distance: '3,2 km',
-    image: require('@/assets/images/brand/logo.png') // Utiliser une image temporaire
-  },
-  {
-    id: '2',
-    title: 'Assortiment de fromages',
-    price: '24,50 €',
-    seller: 'Fromagerie Martin',
-    distance: '5,7 km',
-    image: require('@/assets/images/brand/logo.png')
-  },
-  {
-    id: '3',
-    title: 'Panier fruits de saison',
-    price: '18,75 €',
-    seller: 'Vergers du Sud',
-    distance: '4,1 km',
-    image: require('@/assets/images/brand/logo.png')
-  },
-  {
-    id: '4',
-    title: 'Miel local 500g',
-    price: '12,00 €',
-    seller: 'Rucher des Cévennes',
-    distance: '7,3 km',
-    image: require('@/assets/images/brand/logo.png')
-  },
-];
-
-// Définition du type pour un produit favori
+// Type pour un produit favori depuis l'API
 type FavoriteItem = {
   id: string;
-  title: string;
-  price: string;
-  seller: string;
-  distance: string;
-  image: any; // Idéalement, vous utiliseriez un type plus précis pour les images
+  product: {
+    id: number;
+    title: string;
+    price: number;
+    gallery?: Array<{
+      url: string;
+    }>;
+  };
+  createdAt: string;
 };
 
 const FavoritesScreen = () => {
-  const renderFavoriteItem = ({ item }: { item: FavoriteItem }) => (
-    <View style={styles.favoriteItem}>
-      <Image source={item.image} style={styles.itemImage} />
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle}>{item.title}</Text>
-        <Text style={styles.itemPrice}>{item.price}</Text>
-        <Text style={styles.itemSeller}>{item.seller}</Text>
-        <Text style={styles.itemDistance}>
-          <FontAwesome name="map-marker" size={14} color="#666" /> {item.distance}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.favoriteButton}>
-        <FontAwesome name="heart" size={24} color="#e74c3c" />
+  const { isAuthenticated } = useAuth();
+  const { favorites, isLoading, removeFavorite, getFavoriteId } = useFavorites();
+
+  // Rediriger vers la connexion si pas authentifié
+  useEffect(() => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Connexion requise',
+        'Vous devez être connecté pour voir vos favoris.',
+        [
+          { text: 'Se connecter', onPress: () => router.push('/(tabs)/auth/login') },
+          { text: 'Annuler', style: 'cancel' }
+        ]
+      );
+    }
+  }, [isAuthenticated]);
+
+  const handleRemoveFavorite = async (productId: number) => {
+    try {
+      const favoriteId = getFavoriteId(productId);
+      if (favoriteId) {
+        await removeFavorite(favoriteId);
+        Alert.alert('Succès', 'Produit retiré des favoris');
+      }
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de retirer le produit des favoris');
+    }
+  };
+
+  const handleProductPress = (productId: number) => {
+    // Navigation vers les détails du produit
+    // Nous devrons d'abord trouver le producteur de ce produit
+    console.log('Navigation vers le produit:', productId);
+    // router.push(`/producer/${producerId}`); // À implémenter avec l'ID du producteur
+  };
+
+  const renderFavoriteItem = ({ item }: { item: any }) => {
+    const product = item.product;
+    const productImage = product.gallery && product.gallery.length > 0 
+      ? { uri: `http://localhost:1337${product.gallery[0].url}` }
+      : require('@/assets/images/icon.png');
+
+    return (
+      <TouchableOpacity 
+        style={styles.favoriteItem}
+        onPress={() => handleProductPress(product.id)}
+      >
+        <Image source={productImage} style={styles.itemImage} />
+        <View style={styles.itemInfo}>
+          <Text style={styles.itemTitle}>{product.title}</Text>
+          <Text style={styles.itemPrice}>{product.price.toFixed(2).replace('.', ',')} €/kg</Text>
+          <Text style={styles.itemDate}>
+            Ajouté le {new Date(item.createdAt).toLocaleDateString('fr-FR')}
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.favoriteButton}
+          onPress={() => handleRemoveFavorite(product.id)}
+        >
+          <FontAwesome name="heart" size={24} color="#e74c3c" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header />
+        <View style={styles.emptyContainer}>
+          <FontAwesome name="user" size={50} color="#ddd" />
+          <Text style={styles.emptyText}>Connexion requise</Text>
+          <Text style={styles.emptySubText}>
+            Connectez-vous pour voir vos favoris
+          </Text>
+          <TouchableOpacity 
+            style={styles.loginButton}
+            onPress={() => router.push('/(tabs)/auth/login')}
+          >
+            <Text style={styles.loginButtonText}>Se connecter</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Chargement de vos favoris...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -74,14 +126,18 @@ const FavoritesScreen = () => {
       
       <View style={styles.titleContainer}>
         <Text style={styles.title}>Vos Favoris</Text>
+        {favorites.length > 0 && (
+          <Text style={styles.count}>{favorites.length} produit{favorites.length > 1 ? 's' : ''}</Text>
+        )}
       </View>
       
-      {favoritesData.length > 0 ? (
+      {favorites.length > 0 ? (
         <FlatList
-          data={favoritesData}
-          keyExtractor={(item) => item.id}
+          data={favorites}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderFavoriteItem}
           contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -90,6 +146,12 @@ const FavoritesScreen = () => {
           <Text style={styles.emptySubText}>
             Ajoutez des produits à vos favoris pour les retrouver ici
           </Text>
+          <TouchableOpacity 
+            style={styles.exploreButton}
+            onPress={() => router.push('/(tabs)')}
+          >
+            <Text style={styles.exploreButtonText}>Explorer les produits</Text>
+          </TouchableOpacity>
         </View>
       )}
       
@@ -107,11 +169,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
+  },
+  count: {
+    fontSize: 14,
+    color: '#666',
   },
   listContainer: {
     padding: 16,
@@ -150,12 +219,7 @@ const styles = StyleSheet.create({
     color: Colors.primary || '#e67e22',
     marginTop: 4,
   },
-  itemSeller: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  itemDistance: {
+  itemDate: {
     fontSize: 14,
     color: '#666',
     marginTop: 4,
@@ -164,6 +228,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   emptyContainer: {
     flex: 1,
@@ -183,6 +257,30 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#999',
     maxWidth: '80%',
+  },
+  loginButton: {
+    backgroundColor: Colors.primary || '#e67e22',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  exploreButton: {
+    backgroundColor: Colors.primary || '#e67e22',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  exploreButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

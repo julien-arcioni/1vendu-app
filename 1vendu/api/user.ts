@@ -271,4 +271,27 @@ export const getStoredUserData = async (): Promise<UserData | null> => {
     console.error('Erreur lors de la récupération des données utilisateur:', error);
     throw error;
   }
+};
+
+/**
+ * Supprime le compte de l'utilisateur connecté
+ * @returns {Promise<void>}
+ */
+export const deleteUserAccount = async () => {
+  try {
+    // Récupérer l'utilisateur actuel pour obtenir son ID
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      throw new Error('Utilisateur non trouvé');
+    }
+
+    // Supprimer le compte via l'API Strapi
+    await axiosInstance.delete(`/api/users/${currentUser.id}`);
+    
+    // Nettoyer les données locales
+    await clearUserData();
+  } catch (error) {
+    console.error('Erreur lors de la suppression du compte:', error);
+    throw error;
+  }
 }; 
